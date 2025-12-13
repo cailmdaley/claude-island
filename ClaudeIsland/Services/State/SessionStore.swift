@@ -19,6 +19,20 @@ actor SessionStore {
     /// Logger for session store (nonisolated static for cross-context access)
     nonisolated static let logger = Logger(subsystem: "com.claudeisland", category: "Session")
 
+    // MARK: - Configuration
+
+    /// Cleanup check interval (30 seconds)
+    private let cleanupIntervalSeconds: TimeInterval = 30
+
+    /// Delay before checking if local process is still running (10 seconds)
+    private let localProcessCheckDelay: TimeInterval = 10
+
+    /// Timeout for remote sessions (10 minutes)
+    private let remoteTimeoutMinutes: TimeInterval = 10
+
+    /// Absolute timeout for any session (30 minutes)
+    private let absoluteTimeoutMinutes: TimeInterval = 30
+
     // MARK: - State
 
     /// All sessions keyed by sessionId
@@ -26,6 +40,9 @@ actor SessionStore {
 
     /// Pending file syncs (debounced)
     private var pendingSyncs: [String: Task<Void, Never>] = [:]
+
+    /// Cleanup task for removing inactive sessions
+    private var cleanupTask: Task<Void, Never>?
 
     /// Sync debounce interval (100ms)
     private let syncDebounceNs: UInt64 = 100_000_000
@@ -42,7 +59,64 @@ actor SessionStore {
 
     // MARK: - Initialization
 
-    private init() {}
+    private init() {
+        startCleanupTask()
+    }
+
+    // MARK: - Cleanup
+
+    /// Check if a process is running (signal 0 = existence check)
+    nonisolated private func isProcessRunning(_ pid: Int) -> Bool {
+        kill(Int32(pid), 0) == 0
+    }
+
+    /// Start the periodic cleanup task
+    private func startCleanupTask() {
+        cleanupTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: UInt64(30 * 1_000_000_000))
+                await self?.cleanupInactiveSessions()
+            }
+        }
+    }
+
+    /// Remove inactive sessions based on timeout and process status
+    private func cleanupInactiveSessions() {
+        let now = Date()
+        var sessionsToRemove: [String] = []
+
+        for (sessionId, session) in sessions {
+            let inactivity = now.timeIntervalSince(session.lastActivity)
+
+            // Absolute timeout - any session idle for 30 min
+            if inactivity > absoluteTimeoutMinutes * 60 {
+                sessionsToRemove.append(sessionId)
+                continue
+            }
+
+            // Local session - check if process still exists
+            if let pid = session.pid, !session.isRemote {
+                if inactivity > localProcessCheckDelay && !isProcessRunning(pid) {
+                    sessionsToRemove.append(sessionId)
+                }
+            } else if session.isRemote {
+                // Remote session - longer timeout (can't check process)
+                if inactivity > remoteTimeoutMinutes * 60 {
+                    sessionsToRemove.append(sessionId)
+                }
+            }
+        }
+
+        for sessionId in sessionsToRemove {
+            Self.logger.info("Removing inactive session: \(sessionId.prefix(8))")
+            sessions.removeValue(forKey: sessionId)
+            cancelPendingSync(sessionId: sessionId)
+        }
+
+        if !sessionsToRemove.isEmpty {
+            publishState()
+        }
+    }
 
     // MARK: - Event Processing
 
@@ -133,6 +207,13 @@ actor SessionStore {
         if let tty = event.tty {
             session.tty = tty.replacingOccurrences(of: "/dev/", with: "")
         }
+        // Update remote session info if provided
+        if let remoteHost = event.remoteHost {
+            session.remoteHost = remoteHost
+        }
+        if let tmuxTarget = event.tmuxTarget {
+            session.remoteTmuxTarget = tmuxTarget
+        }
         session.lastActivity = Date()
 
         if event.status == "ended" {
@@ -177,6 +258,8 @@ actor SessionStore {
             pid: event.pid,
             tty: event.tty?.replacingOccurrences(of: "/dev/", with: ""),
             isInTmux: false,  // Will be updated
+            remoteHost: event.remoteHost,
+            remoteTmuxTarget: event.tmuxTarget,
             phase: .idle
         )
     }
@@ -849,7 +932,13 @@ actor SessionStore {
     // MARK: - History Loading
 
     private func loadHistoryFromFile(sessionId: String, cwd: String) async {
-        // Parse file asynchronously
+        // Check if this is a remote session
+        if let session = sessions[sessionId], let remoteHost = session.remoteHost {
+            await loadHistoryFromRemote(sessionId: sessionId, cwd: cwd, remoteHost: remoteHost)
+            return
+        }
+
+        // Local session: parse file directly
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
             cwd: cwd
@@ -871,6 +960,37 @@ actor SessionStore {
             completedTools: completedTools,
             toolResults: toolResults,
             structuredResults: structuredResults,
+            conversationInfo: conversationInfo
+        ))
+    }
+
+    /// Load history from remote host via SSH
+    private func loadHistoryFromRemote(sessionId: String, cwd: String, remoteHost: String) async {
+        Self.logger.info("Loading remote history: host=\(remoteHost, privacy: .public), cwd=\(cwd, privacy: .public), session=\(sessionId.prefix(8), privacy: .public)")
+
+        // Fetch JSONL content via SSH
+        guard let content = await RemoteFileReader.shared.fetchConversation(
+            host: remoteHost,
+            sessionId: sessionId,
+            cwd: cwd
+        ) else {
+            Self.logger.warning("No remote content found for session \(sessionId, privacy: .public)")
+            return
+        }
+
+        Self.logger.info("Fetched \(content.count) bytes from remote")
+
+        // Parse content directly (no local file access)
+        let parseResult = await ConversationParser.shared.parseMessagesFromContent(content, sessionId: sessionId)
+        let conversationInfo = await ConversationParser.shared.parseInfoFromContent(content)
+
+        // Process loaded history
+        await process(.historyLoaded(
+            sessionId: sessionId,
+            messages: parseResult.messages,
+            completedTools: parseResult.completedToolIds,
+            toolResults: parseResult.toolResults,
+            structuredResults: parseResult.structuredResults,
             conversationInfo: conversationInfo
         ))
     }
@@ -922,37 +1042,71 @@ actor SessionStore {
         // Cancel existing sync
         cancelPendingSync(sessionId: sessionId)
 
+        // Check if this is a remote session
+        let remoteHost = sessions[sessionId]?.remoteHost
+
         // Schedule new debounced sync
         pendingSyncs[sessionId] = Task { [weak self, syncDebounceNs] in
             try? await Task.sleep(nanoseconds: syncDebounceNs)
             guard !Task.isCancelled else { return }
 
-            // Parse incrementally - only get NEW messages since last call
-            let result = await ConversationParser.shared.parseIncremental(
-                sessionId: sessionId,
-                cwd: cwd
-            )
+            if let remoteHost = remoteHost {
+                // Remote session: re-fetch and do full parse
+                await self?.syncRemoteSession(sessionId: sessionId, cwd: cwd, remoteHost: remoteHost)
+            } else {
+                // Local session: parse incrementally
+                let result = await ConversationParser.shared.parseIncremental(
+                    sessionId: sessionId,
+                    cwd: cwd
+                )
 
-            if result.clearDetected {
-                await self?.process(.clearDetected(sessionId: sessionId))
+                if result.clearDetected {
+                    await self?.process(.clearDetected(sessionId: sessionId))
+                }
+
+                guard !result.newMessages.isEmpty || result.clearDetected else {
+                    return
+                }
+
+                let payload = FileUpdatePayload(
+                    sessionId: sessionId,
+                    cwd: cwd,
+                    messages: result.newMessages,
+                    isIncremental: !result.clearDetected,
+                    completedToolIds: result.completedToolIds,
+                    toolResults: result.toolResults,
+                    structuredResults: result.structuredResults
+                )
+
+                await self?.process(.fileUpdated(payload))
             }
-
-            guard !result.newMessages.isEmpty || result.clearDetected else {
-                return
-            }
-
-            let payload = FileUpdatePayload(
-                sessionId: sessionId,
-                cwd: cwd,
-                messages: result.newMessages,
-                isIncremental: !result.clearDetected,
-                completedToolIds: result.completedToolIds,
-                toolResults: result.toolResults,
-                structuredResults: result.structuredResults
-            )
-
-            await self?.process(.fileUpdated(payload))
         }
+    }
+
+    /// Sync remote session by re-fetching full content
+    private func syncRemoteSession(sessionId: String, cwd: String, remoteHost: String) async {
+        guard let content = await RemoteFileReader.shared.fetchConversation(
+            host: remoteHost,
+            sessionId: sessionId,
+            cwd: cwd
+        ) else {
+            return
+        }
+
+        let parseResult = await ConversationParser.shared.parseMessagesFromContent(content, sessionId: sessionId)
+
+        // For remote, we do full replacement (not incremental)
+        let payload = FileUpdatePayload(
+            sessionId: sessionId,
+            cwd: cwd,
+            messages: parseResult.messages,
+            isIncremental: false,
+            completedToolIds: parseResult.completedToolIds,
+            toolResults: parseResult.toolResults,
+            structuredResults: parseResult.structuredResults
+        )
+
+        await process(.fileUpdated(payload))
     }
 
     private func cancelPendingSync(sessionId: String) {

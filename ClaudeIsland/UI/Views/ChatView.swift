@@ -24,6 +24,7 @@ struct ChatView: View {
     @State private var newMessageCount: Int = 0
     @State private var previousHistoryCount: Int = 0
     @State private var isBottomVisible: Bool = true
+    @State private var isRefreshing: Bool = false
     @FocusState private var isInputFocused: Bool
 
     init(sessionId: String, initialSession: SessionState, sessionMonitor: ClaudeSessionMonitor, viewModel: NotchViewModel) {
@@ -97,14 +98,18 @@ struct ChatView: View {
             hasLoadedOnce = true
 
             // Check if already loaded (from previous visit)
-            if ChatHistoryManager.shared.isLoaded(sessionId: sessionId) {
-                history = ChatHistoryManager.shared.history(for: sessionId)
+            // For remote sessions with empty history, force a reload
+            let cachedHistory = ChatHistoryManager.shared.history(for: sessionId)
+            let needsRemoteLoad = session.isRemote && cachedHistory.isEmpty
+
+            if ChatHistoryManager.shared.isLoaded(sessionId: sessionId) && !needsRemoteLoad {
+                history = cachedHistory
                 isLoading = false
                 return
             }
 
             // Load in background, show loading state
-            await ChatHistoryManager.shared.loadFromFile(sessionId: sessionId, cwd: session.cwd)
+            await ChatHistoryManager.shared.loadFromFile(sessionId: sessionId, cwd: session.cwd, forceRemote: needsRemoteLoad)
             history = ChatHistoryManager.shared.history(for: sessionId)
 
             withAnimation(.easeOut(duration: 0.2)) {
@@ -181,32 +186,64 @@ struct ChatView: View {
 
     @State private var isHeaderHovered = false
 
+    @State private var isRefreshHovered = false
+
     private var chatHeader: some View {
-        Button {
-            viewModel.exitChat()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.6))
-                    .frame(width: 24, height: 24)
+        HStack(spacing: 0) {
+            Button {
+                viewModel.exitChat()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.6))
+                        .frame(width: 24, height: 24)
 
-                Text(session.displayTitle)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.85))
-                    .lineLimit(1)
+                    Text(session.displayTitle)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(isHeaderHovered ? 1.0 : 0.85))
+                        .lineLimit(1)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(isHeaderHovered ? Color.white.opacity(0.08) : Color.clear)
+                )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isHeaderHovered ? Color.white.opacity(0.08) : Color.clear)
-            )
+            .buttonStyle(.plain)
+            .onHover { isHeaderHovered = $0 }
+
+            // Refresh button for remote sessions
+            if session.isRemote {
+                Button {
+                    refreshRemoteHistory()
+                } label: {
+                    Group {
+                        if isRefreshing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.6)))
+                                .scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white.opacity(isRefreshHovered ? 0.9 : 0.5))
+                        }
+                    }
+                    .frame(width: 28, height: 28)
+                    .background(
+                        Circle()
+                            .fill(isRefreshHovered ? Color.white.opacity(0.1) : Color.clear)
+                    )
+                }
+                .buttonStyle(.plain)
+                .onHover { isRefreshHovered = $0 }
+                .disabled(isRefreshing)
+                .padding(.trailing, 8)
+            }
         }
-        .buttonStyle(.plain)
-        .onHover { isHeaderHovered = $0 }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color.black.opacity(0.2))
@@ -255,13 +292,46 @@ struct ChatView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "bubble.left.and.bubble.right")
+        VStack(spacing: 12) {
+            Image(systemName: session.isRemote ? "wifi.exclamationmark" : "bubble.left.and.bubble.right")
                 .font(.system(size: 24))
                 .foregroundColor(.white.opacity(0.2))
-            Text("No messages yet")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.4))
+
+            if session.isRemote {
+                Text("Couldn't load remote history")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.4))
+
+                Button {
+                    refreshRemoteHistory()
+                } label: {
+                    HStack(spacing: 6) {
+                        if isRefreshing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        Text("Retry")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.1))
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(isRefreshing)
+            } else {
+                Text("No messages yet")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.4))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -353,9 +423,14 @@ struct ChatView: View {
 
     // MARK: - Input Bar
 
-    /// Can send messages only if session is in tmux
+    /// Can send messages only if session is in tmux (local or remote)
     private var canSendMessages: Bool {
-        session.isInTmux && session.tty != nil
+        // Remote sessions can always send if we have the target
+        if session.isRemote && session.remoteTmuxTarget != nil {
+            return true
+        }
+        // Local sessions need tmux and tty
+        return session.isInTmux && session.tty != nil
     }
 
     private var inputBar: some View {
@@ -413,6 +488,7 @@ struct ChatView: View {
             tool: tool,
             toolInput: session.pendingToolInput,
             onApprove: { approvePermission() },
+            onApproveAlways: { approveAlwaysPermission() },
             onDeny: { denyPermission() }
         )
     }
@@ -444,6 +520,28 @@ struct ChatView: View {
 
     // MARK: - Actions
 
+    private func refreshRemoteHistory() {
+        guard session.isRemote, !isRefreshing else { return }
+
+        isRefreshing = true
+
+        Task {
+            // Force a fresh load from remote
+            await ChatHistoryManager.shared.loadFromFile(
+                sessionId: sessionId,
+                cwd: session.cwd,
+                forceRemote: true
+            )
+
+            // Update local history from manager
+            await MainActor.run {
+                history = ChatHistoryManager.shared.history(for: sessionId)
+                isRefreshing = false
+                isLoading = false
+            }
+        }
+    }
+
     private func focusTerminal() {
         Task {
             if let pid = session.pid {
@@ -456,6 +554,10 @@ struct ChatView: View {
 
     private func approvePermission() {
         sessionMonitor.approvePermission(sessionId: sessionId)
+    }
+
+    private func approveAlwaysPermission() {
+        sessionMonitor.approveAlwaysPermission(sessionId: sessionId)
     }
 
     private func denyPermission() {
@@ -479,6 +581,13 @@ struct ChatView: View {
     }
 
     private func sendToSession(_ text: String) async {
+        // Handle remote sessions
+        if let remoteHost = session.remoteHost, let remoteTmuxTarget = session.remoteTmuxTarget {
+            _ = await ToolApprovalHandler.shared.sendMessage(text, remoteTmuxTarget: remoteTmuxTarget, remoteHost: remoteHost)
+            return
+        }
+
+        // Handle local sessions
         guard session.isInTmux else { return }
         guard let tty = session.tty else { return }
 
@@ -1050,10 +1159,12 @@ struct ChatApprovalBar: View {
     let tool: String
     let toolInput: String?
     let onApprove: () -> Void
+    let onApproveAlways: () -> Void
     let onDeny: () -> Void
 
     @State private var showContent = false
     @State private var showAllowButton = false
+    @State private var showAlwaysButton = false
     @State private var showDenyButton = false
 
     var body: some View {
@@ -1091,6 +1202,22 @@ struct ChatApprovalBar: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
+            // Always button
+            Button {
+                onApproveAlways()
+            } label: {
+                Text("Always")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.2))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showAlwaysButton ? 1 : 0)
+            .scaleEffect(showAlwaysButton ? 1 : 0.8)
+
             // Allow button
             Button {
                 onApprove()
@@ -1119,6 +1246,9 @@ struct ChatApprovalBar: View {
                 showDenyButton = true
             }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.15)) {
+                showAlwaysButton = true
+            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.2)) {
                 showAllowButton = true
             }
         }

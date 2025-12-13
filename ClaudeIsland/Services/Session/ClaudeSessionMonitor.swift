@@ -94,6 +94,24 @@ class ClaudeSessionMonitor: ObservableObject {
         }
     }
 
+    func approveAlwaysPermission(sessionId: String) {
+        Task {
+            guard let session = await SessionStore.shared.session(for: sessionId),
+                  let permission = session.activePermission else {
+                return
+            }
+
+            // Use tmux keystroke to send "2" (always accept) directly to Claude
+            let success = await TmuxController.shared.approveAlways(session: session)
+
+            if success {
+                await SessionStore.shared.process(
+                    .permissionApproved(sessionId: sessionId, toolUseId: permission.toolUseId)
+                )
+            }
+        }
+    }
+
     func denyPermission(sessionId: String, reason: String?) {
         Task {
             guard let session = await SessionStore.shared.session(for: sessionId),

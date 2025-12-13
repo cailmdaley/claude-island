@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
 Claude Island Hook
-- Sends session state to ClaudeIsland.app via Unix socket
+- Sends session state to ClaudeIsland.app via Unix socket or TCP
 - For PermissionRequest: waits for user decision from the app
+
+Environment variables for remote sessions:
+- CLAUDE_ISLAND_TCP: TCP host:port (e.g., "localhost:12345")
+- CLAUDE_ISLAND_REMOTE_HOST: SSH hostname for remote commands (e.g., "cluster")
 """
 import json
 import os
@@ -10,6 +14,7 @@ import socket
 import sys
 
 SOCKET_PATH = "/tmp/claude-island.sock"
+TCP_DEFAULT_PORT = 12345
 TIMEOUT_SECONDS = 300  # 5 minutes for permission decisions
 
 
@@ -49,12 +54,56 @@ def get_tty():
     return None
 
 
-def send_event(state):
-    """Send event to app, return response if any"""
-    try:
+def get_socket():
+    """Get socket connection - TCP if CLAUDE_ISLAND_TCP is set, else Unix"""
+    tcp_target = os.environ.get("CLAUDE_ISLAND_TCP")
+    if tcp_target:
+        # Parse host:port (default to localhost if only port given)
+        if ":" in tcp_target:
+            host, port_str = tcp_target.rsplit(":", 1)
+            port = int(port_str)
+        else:
+            host = "localhost"
+            port = int(tcp_target)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(TIMEOUT_SECONDS)
+        sock.connect((host, port))
+        return sock
+    else:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.settimeout(TIMEOUT_SECONDS)
         sock.connect(SOCKET_PATH)
+        return sock
+
+
+def get_tmux_target():
+    """Get the tmux target for this pane (if running in tmux)"""
+    # TMUX_PANE is set by tmux (e.g., "%42")
+    pane = os.environ.get("TMUX_PANE")
+    if not pane:
+        return None
+
+    # Try to get full target string (session:window.pane)
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["tmux", "display-message", "-p", "#{session_name}:#{window_index}.#{pane_index}"],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except Exception:
+        pass
+
+    return pane
+
+
+def send_event(state):
+    """Send event to app, return response if any"""
+    try:
+        sock = get_socket()
         sock.sendall(json.dumps(state).encode())
 
         # For permission requests, wait for response
@@ -86,6 +135,10 @@ def main():
     claude_pid = os.getppid()
     tty = get_tty()
 
+    # Get remote session info (if running via SSH tunnel)
+    remote_host = os.environ.get("CLAUDE_ISLAND_REMOTE_HOST")
+    tmux_target = get_tmux_target() if remote_host else None
+
     # Build state object
     state = {
         "session_id": session_id,
@@ -93,6 +146,8 @@ def main():
         "event": event,
         "pid": claude_pid,
         "tty": tty,
+        "remote_host": remote_host,
+        "tmux_target": tmux_target,
     }
 
     # Map events to status

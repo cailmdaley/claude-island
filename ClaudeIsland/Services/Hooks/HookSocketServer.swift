@@ -25,6 +25,10 @@ struct HookEvent: Codable, Sendable {
     let toolUseId: String?
     let notificationType: String?
     let message: String?
+    /// Remote host for SSH commands (nil for local sessions)
+    let remoteHost: String?
+    /// Tmux target string from remote (e.g., "session:window.pane")
+    let tmuxTarget: String?
 
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
@@ -33,10 +37,12 @@ struct HookEvent: Codable, Sendable {
         case toolUseId = "tool_use_id"
         case notificationType = "notification_type"
         case message
+        case remoteHost = "remote_host"
+        case tmuxTarget = "tmux_target"
     }
 
     /// Create a copy with updated toolUseId
-    init(sessionId: String, cwd: String, event: String, status: String, pid: Int?, tty: String?, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
+    init(sessionId: String, cwd: String, event: String, status: String, pid: Int?, tty: String?, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?, remoteHost: String? = nil, tmuxTarget: String? = nil) {
         self.sessionId = sessionId
         self.cwd = cwd
         self.event = event
@@ -48,6 +54,8 @@ struct HookEvent: Codable, Sendable {
         self.toolUseId = toolUseId
         self.notificationType = notificationType
         self.message = message
+        self.remoteHost = remoteHost
+        self.tmuxTarget = tmuxTarget
     }
 
     var sessionPhase: SessionPhase {
@@ -103,14 +111,22 @@ typealias HookEventHandler = @Sendable (HookEvent) -> Void
 /// Callback for permission response failures (socket died)
 typealias PermissionFailureHandler = @Sendable (_ sessionId: String, _ toolUseId: String) -> Void
 
-/// Unix domain socket server that receives events from Claude Code hooks
+/// Socket server that receives events from Claude Code hooks
+/// Supports both Unix domain socket (local) and TCP (remote via SSH tunnel)
 /// Uses GCD DispatchSource for non-blocking I/O
 class HookSocketServer {
     static let shared = HookSocketServer()
     static let socketPath = "/tmp/claude-island.sock"
+    static let tcpPort: UInt16 = 12345
 
+    // Unix socket
     private var serverSocket: Int32 = -1
     private var acceptSource: DispatchSourceRead?
+
+    // TCP socket
+    private var tcpServerSocket: Int32 = -1
+    private var tcpAcceptSource: DispatchSourceRead?
+
     private var eventHandler: HookEventHandler?
     private var permissionFailureHandler: PermissionFailureHandler?
     private let queue = DispatchQueue(label: "com.claudeisland.socket", qos: .userInitiated)
@@ -187,7 +203,7 @@ class HookSocketServer {
 
         acceptSource = DispatchSource.makeReadSource(fileDescriptor: serverSocket, queue: queue)
         acceptSource?.setEventHandler { [weak self] in
-            self?.acceptConnection()
+            self?.acceptConnection(from: self?.serverSocket ?? -1)
         }
         acceptSource?.setCancelHandler { [weak self] in
             if let fd = self?.serverSocket, fd >= 0 {
@@ -196,13 +212,77 @@ class HookSocketServer {
             }
         }
         acceptSource?.resume()
+
+        // Also start TCP server for remote connections
+        startTCPServer()
+    }
+
+    private func startTCPServer() {
+        guard tcpServerSocket < 0 else { return }
+
+        tcpServerSocket = socket(AF_INET, SOCK_STREAM, 0)
+        guard tcpServerSocket >= 0 else {
+            logger.error("Failed to create TCP socket: \(errno)")
+            return
+        }
+
+        // Allow address reuse
+        var yes: Int32 = 1
+        setsockopt(tcpServerSocket, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
+
+        let flags = fcntl(tcpServerSocket, F_GETFL)
+        _ = fcntl(tcpServerSocket, F_SETFL, flags | O_NONBLOCK)
+
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = Self.tcpPort.bigEndian
+        addr.sin_addr.s_addr = INADDR_LOOPBACK.bigEndian  // Only localhost for security
+
+        let bindResult = withUnsafePointer(to: &addr) { ptr in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                bind(tcpServerSocket, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+
+        guard bindResult == 0 else {
+            logger.error("Failed to bind TCP socket to port \(Self.tcpPort): \(errno)")
+            close(tcpServerSocket)
+            tcpServerSocket = -1
+            return
+        }
+
+        guard listen(tcpServerSocket, 10) == 0 else {
+            logger.error("Failed to listen on TCP socket: \(errno)")
+            close(tcpServerSocket)
+            tcpServerSocket = -1
+            return
+        }
+
+        logger.info("Listening on TCP port \(Self.tcpPort, privacy: .public) (localhost only)")
+
+        tcpAcceptSource = DispatchSource.makeReadSource(fileDescriptor: tcpServerSocket, queue: queue)
+        tcpAcceptSource?.setEventHandler { [weak self] in
+            self?.acceptConnection(from: self?.tcpServerSocket ?? -1)
+        }
+        tcpAcceptSource?.setCancelHandler { [weak self] in
+            if let fd = self?.tcpServerSocket, fd >= 0 {
+                close(fd)
+                self?.tcpServerSocket = -1
+            }
+        }
+        tcpAcceptSource?.resume()
     }
 
     /// Stop the socket server
     func stop() {
+        // Stop Unix socket
         acceptSource?.cancel()
         acceptSource = nil
         unlink(Self.socketPath)
+
+        // Stop TCP socket
+        tcpAcceptSource?.cancel()
+        tcpAcceptSource = nil
 
         permissionsLock.lock()
         for (_, pending) in pendingPermissions {
@@ -357,8 +437,8 @@ class HookSocketServer {
 
     // MARK: - Private
 
-    private func acceptConnection() {
-        let clientSocket = accept(serverSocket, nil, nil)
+    private func acceptConnection(from serverFd: Int32) {
+        let clientSocket = accept(serverFd, nil, nil)
         guard clientSocket >= 0 else { return }
 
         var nosigpipe: Int32 = 1
@@ -447,7 +527,9 @@ class HookSocketServer {
                 toolInput: event.toolInput,
                 toolUseId: toolUseId,  // Use resolved toolUseId
                 notificationType: event.notificationType,
-                message: event.message
+                message: event.message,
+                remoteHost: event.remoteHost,
+                tmuxTarget: event.tmuxTarget
             )
 
             let pending = PendingPermission(

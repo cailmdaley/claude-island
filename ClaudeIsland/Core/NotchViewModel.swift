@@ -20,6 +20,7 @@ enum NotchOpenReason {
     case hover
     case notification
     case boot
+    case hotkey
     case unknown
 }
 

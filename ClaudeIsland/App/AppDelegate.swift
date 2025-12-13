@@ -85,6 +85,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let updater = self?.updater, updater.canCheckForUpdates else { return }
             updater.checkForUpdates()
         }
+
+        // Set up global hotkey (CMD+§)
+        HotKeyManager.shared.setup { [weak self] in
+            self?.openIslandViaHotkey()
+        }
+    }
+
+    private func openIslandViaHotkey() {
+        Task { @MainActor in
+            guard let viewModel = windowController?.viewModel else { return }
+            if viewModel.status == .opened {
+                viewModel.notchClose()
+            } else {
+                viewModel.notchOpen(reason: .hotkey)
+            }
+        }
     }
 
     private func handleScreenChange() {
@@ -92,6 +108,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        HotKeyManager.shared.teardown()
         Mixpanel.mainInstance().flush()
         updateCheckTimer?.invalidate()
         screenObserver = nil

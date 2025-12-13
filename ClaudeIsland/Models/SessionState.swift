@@ -23,6 +23,13 @@ struct SessionState: Equatable, Identifiable, Sendable {
     var tty: String?
     var isInTmux: Bool
 
+    // MARK: - Remote Session Info
+
+    /// Remote host for SSH commands (nil for local sessions)
+    var remoteHost: String?
+    /// Tmux target string from remote (e.g., "session:window.pane")
+    var remoteTmuxTarget: String?
+
     // MARK: - State Machine
 
     /// Current phase in the session lifecycle
@@ -71,6 +78,8 @@ struct SessionState: Equatable, Identifiable, Sendable {
         pid: Int? = nil,
         tty: String? = nil,
         isInTmux: Bool = false,
+        remoteHost: String? = nil,
+        remoteTmuxTarget: String? = nil,
         phase: SessionPhase = .idle,
         chatItems: [ChatHistoryItem] = [],
         toolTracker: ToolTracker = ToolTracker(),
@@ -89,6 +98,8 @@ struct SessionState: Equatable, Identifiable, Sendable {
         self.pid = pid
         self.tty = tty
         self.isInTmux = isInTmux
+        self.remoteHost = remoteHost
+        self.remoteTmuxTarget = remoteTmuxTarget
         self.phase = phase
         self.chatItems = chatItems
         self.toolTracker = toolTracker
@@ -100,6 +111,11 @@ struct SessionState: Equatable, Identifiable, Sendable {
     }
 
     // MARK: - Derived Properties
+
+    /// Whether this session is running on a remote host
+    var isRemote: Bool {
+        remoteHost != nil
+    }
 
     /// Whether this session needs user attention
     var needsAttention: Bool {

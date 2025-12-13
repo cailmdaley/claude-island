@@ -1,0 +1,107 @@
+//
+//  Theme.swift
+//  ClaudeIsland
+//
+//  Theme protocol and implementations for light/dark mode support.
+//
+
+import SwiftUI
+
+/// Theme protocol defining all colors used in the app
+protocol Theme {
+    // Background colors
+    var background: Color { get }
+    var backgroundElevated: Color { get }
+    var backgroundHover: Color { get }
+
+    // Text colors
+    var textPrimary: Color { get }
+    var textSecondary: Color { get }
+    var textDim: Color { get }
+    var textDimmer: Color { get }
+
+    // Accent & status colors
+    var accent: Color { get }
+    var success: Color { get }
+    var warning: Color { get }
+    var error: Color { get }
+
+    // Code/diff colors
+    var codeBackground: Color { get }
+    var diffAdded: Color { get }
+    var diffRemoved: Color { get }
+
+    // Terminal colors (semantic)
+    var terminalGreen: Color { get }
+    var terminalAmber: Color { get }
+    var terminalRed: Color { get }
+    var terminalCyan: Color { get }
+    var terminalBlue: Color { get }
+    var terminalMagenta: Color { get }
+    var terminalPrompt: Color { get }
+}
+
+/// Dark theme (current default)
+struct DarkTheme: Theme {
+    let background = Color.black
+    let backgroundElevated = Color.white.opacity(0.05)
+    let backgroundHover = Color.white.opacity(0.1)
+
+    let textPrimary = Color.white
+    let textSecondary = Color.white.opacity(0.85)
+    let textDim = Color.white.opacity(0.4)
+    let textDimmer = Color.white.opacity(0.2)
+
+    let accent = Color(red: 0.85, green: 0.47, blue: 0.34)  // Claude orange #d97857
+    let success = Color(red: 0.4, green: 0.75, blue: 0.45)
+    let warning = Color(red: 1.0, green: 0.7, blue: 0.0)
+    let error = Color(red: 1.0, green: 0.3, blue: 0.3)
+
+    let codeBackground = Color.white.opacity(0.08)
+    let diffAdded = Color(red: 0.2, green: 0.4, blue: 0.2)
+    let diffRemoved = Color(red: 0.4, green: 0.2, blue: 0.2)
+
+    let terminalGreen = Color(red: 0.4, green: 0.75, blue: 0.45)
+    let terminalAmber = Color(red: 1.0, green: 0.7, blue: 0.0)
+    let terminalRed = Color(red: 1.0, green: 0.3, blue: 0.3)
+    let terminalCyan = Color(red: 0.0, green: 0.8, blue: 0.8)
+    let terminalBlue = Color(red: 0.4, green: 0.6, blue: 1.0)
+    let terminalMagenta = Color(red: 0.8, green: 0.4, blue: 0.8)
+    let terminalPrompt = Color(red: 0.85, green: 0.47, blue: 0.34)
+}
+
+/// Light theme (Dawnfox-inspired)
+/// Based on rosepine dawn: warm, soft colors
+struct LightTheme: Theme {
+    // Dawnfox palette
+    // Background: #faf4ed (warm cream)
+    // Foreground: #575279 (muted purple-gray)
+    // Accent: #b4637a (rose)
+
+    let background = Color(red: 0.98, green: 0.96, blue: 0.93)  // #faf4ed
+    let backgroundElevated = Color(red: 0.95, green: 0.92, blue: 0.88)  // slightly darker
+    let backgroundHover = Color(red: 0.92, green: 0.89, blue: 0.85)
+
+    let textPrimary = Color(red: 0.34, green: 0.32, blue: 0.47)  // #575279
+    let textSecondary = Color(red: 0.34, green: 0.32, blue: 0.47).opacity(0.85)
+    let textDim = Color(red: 0.34, green: 0.32, blue: 0.47).opacity(0.5)
+    let textDimmer = Color(red: 0.34, green: 0.32, blue: 0.47).opacity(0.3)
+
+    let accent = Color(red: 0.71, green: 0.39, blue: 0.48)  // #b4637a rose
+    let success = Color(red: 0.16, green: 0.51, blue: 0.42)  // #286983 pine
+    let warning = Color(red: 0.92, green: 0.60, blue: 0.28)  // #ea9d34 gold
+    let error = Color(red: 0.71, green: 0.39, blue: 0.48)  // #b4637a rose (same as accent for dawnfox)
+
+    let codeBackground = Color(red: 0.95, green: 0.92, blue: 0.88)
+    let diffAdded = Color(red: 0.85, green: 0.93, blue: 0.88)  // soft green tint
+    let diffRemoved = Color(red: 0.95, green: 0.88, blue: 0.88)  // soft red tint
+
+    // Terminal colors adjusted for light background
+    let terminalGreen = Color(red: 0.16, green: 0.51, blue: 0.42)  // pine
+    let terminalAmber = Color(red: 0.92, green: 0.60, blue: 0.28)  // gold
+    let terminalRed = Color(red: 0.71, green: 0.39, blue: 0.48)  // rose
+    let terminalCyan = Color(red: 0.20, green: 0.54, blue: 0.55)  // foam
+    let terminalBlue = Color(red: 0.16, green: 0.51, blue: 0.42)  // pine
+    let terminalMagenta = Color(red: 0.56, green: 0.41, blue: 0.62)  // iris
+    let terminalPrompt = Color(red: 0.71, green: 0.39, blue: 0.48)  // rose
+}

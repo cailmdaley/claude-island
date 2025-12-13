@@ -75,6 +75,7 @@ struct ClaudeInstancesView: View {
                         onChat: { openChat(session) },
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
+                        onApproveAlways: { approveAlwaysSession(session) },
                         onReject: { rejectSession(session) }
                     )
                     .id(session.stableId)
@@ -107,6 +108,10 @@ struct ClaudeInstancesView: View {
         sessionMonitor.approvePermission(sessionId: session.sessionId)
     }
 
+    private func approveAlwaysSession(_ session: SessionState) {
+        sessionMonitor.approveAlwaysPermission(sessionId: session.sessionId)
+    }
+
     private func rejectSession(_ session: SessionState) {
         sessionMonitor.denyPermission(sessionId: session.sessionId, reason: nil)
     }
@@ -124,6 +129,7 @@ struct InstanceRow: View {
     let onChat: () -> Void
     let onArchive: () -> Void
     let onApprove: () -> Void
+    let onApproveAlways: () -> Void
     let onReject: () -> Void
 
     @State private var isHovered = false
@@ -160,8 +166,8 @@ struct InstanceRow: View {
 
                 // Show tool call when waiting for approval, otherwise last activity
                 if isWaitingForApproval, let toolName = session.pendingToolName {
-                    // Show tool name in amber + input on same line
-                    HStack(spacing: 4) {
+                    // Show tool name in amber, input below for more space
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(MCPToolFormatter.formatToolName(toolName))
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
                             .foregroundColor(TerminalColors.amber.opacity(0.9))
@@ -174,7 +180,7 @@ struct InstanceRow: View {
                             Text(input)
                                 .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.5))
-                                .lineLimit(1)
+                                .lineLimit(2)
                         }
                     }
                 } else if let role = session.lastMessageRole {
@@ -247,6 +253,7 @@ struct InstanceRow: View {
                 InlineApprovalButtons(
                     onChat: onChat,
                     onApprove: onApprove,
+                    onApproveAlways: onApproveAlways,
                     onReject: onReject
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -328,10 +335,12 @@ struct InstanceRow: View {
 struct InlineApprovalButtons: View {
     let onChat: () -> Void
     let onApprove: () -> Void
+    let onApproveAlways: () -> Void
     let onReject: () -> Void
 
     @State private var showChatButton = false
     @State private var showDenyButton = false
+    @State private var showAlwaysButton = false
     @State private var showAllowButton = false
 
     var body: some View {
@@ -358,6 +367,19 @@ struct InlineApprovalButtons: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
+            Button(action: onApproveAlways) {
+                Text("Always")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.2))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showAlwaysButton ? 1 : 0)
+            .scaleEffect(showAlwaysButton ? 1 : 0.8)
+
             Button {
                 onApprove()
             } label: {
@@ -381,6 +403,9 @@ struct InlineApprovalButtons: View {
                 showDenyButton = true
             }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.1)) {
+                showAlwaysButton = true
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.15)) {
                 showAllowButton = true
             }
         }

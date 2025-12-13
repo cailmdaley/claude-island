@@ -259,11 +259,103 @@ actor ConversationParser {
         return cleaned
     }
 
+    // MARK: - Direct Content Parsing (for remote sessions)
+
+    /// Parse conversation info directly from content string (no file access)
+    func parseInfoFromContent(_ content: String) -> ConversationInfo {
+        return parseContent(content)
+    }
+
+    /// Result of parsing content directly
+    struct DirectParseResult {
+        let messages: [ChatMessage]
+        let completedToolIds: Set<String>
+        let toolResults: [String: ToolResult]
+        let structuredResults: [String: ToolResultData]
+    }
+
+    /// Parse full conversation from content string (for remote sessions)
+    func parseMessagesFromContent(_ content: String, sessionId: String) -> DirectParseResult {
+        var seenToolIds: Set<String> = []
+        var toolIdToName: [String: String] = [:]
+        var completedToolIds: Set<String> = []
+        var toolResults: [String: ToolResult] = [:]
+        var structuredResults: [String: ToolResultData] = [:]
+        var messages: [ChatMessage] = []
+
+        let lines = content.components(separatedBy: "\n")
+
+        for line in lines where !line.isEmpty {
+            // Skip clear commands - start fresh after them
+            if line.contains("<command-name>/clear</command-name>") {
+                messages = []
+                seenToolIds = []
+                toolIdToName = [:]
+                completedToolIds = []
+                toolResults = [:]
+                structuredResults = [:]
+                continue
+            }
+
+            // Parse tool results first (to know which tools are completed)
+            if line.contains("\"tool_result\"") {
+                if let lineData = line.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let messageDict = json["message"] as? [String: Any],
+                   let contentArray = messageDict["content"] as? [[String: Any]] {
+                    let toolUseResult = json["toolUseResult"] as? [String: Any]
+                    let topLevelToolName = json["toolName"] as? String
+                    let stdout = toolUseResult?["stdout"] as? String
+                    let stderr = toolUseResult?["stderr"] as? String
+
+                    for block in contentArray {
+                        if block["type"] as? String == "tool_result",
+                           let toolUseId = block["tool_use_id"] as? String {
+                            completedToolIds.insert(toolUseId)
+
+                            let blockContent = block["content"] as? String
+                            let isError = block["is_error"] as? Bool ?? false
+                            toolResults[toolUseId] = ToolResult(
+                                content: blockContent,
+                                stdout: stdout,
+                                stderr: stderr,
+                                isError: isError
+                            )
+
+                            let toolName = topLevelToolName ?? toolIdToName[toolUseId]
+                            if let toolUseResult = toolUseResult, let name = toolName {
+                                let structured = Self.parseStructuredResult(
+                                    toolName: name,
+                                    toolUseResult: toolUseResult,
+                                    isError: isError
+                                )
+                                structuredResults[toolUseId] = structured
+                            }
+                        }
+                    }
+                }
+            } else if line.contains("\"type\":\"user\"") || line.contains("\"type\":\"assistant\"") {
+                if let lineData = line.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                   let message = parseMessageLine(json, seenToolIds: &seenToolIds, toolIdToName: &toolIdToName) {
+                    messages.append(message)
+                }
+            }
+        }
+
+        return DirectParseResult(
+            messages: messages,
+            completedToolIds: completedToolIds,
+            toolResults: toolResults,
+            structuredResults: structuredResults
+        )
+    }
+
     // MARK: - Full Conversation Parsing
 
     /// Parse full conversation history for chat view (returns ALL messages - use sparingly)
     func parseFullConversation(sessionId: String, cwd: String) -> [ChatMessage] {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+        let sessionFile = sessionFilePath(sessionId: sessionId, cwd: cwd)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return []
@@ -288,7 +380,7 @@ actor ConversationParser {
 
     /// Parse only NEW messages since last call (efficient incremental updates)
     func parseIncremental(sessionId: String, cwd: String) -> IncrementalParseResult {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+        let sessionFile = sessionFilePath(sessionId: sessionId, cwd: cwd)
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return IncrementalParseResult(
@@ -457,7 +549,61 @@ actor ConversationParser {
         return true
     }
 
-    /// Build session file path
+    /// Cache of resolved paths: sessionId -> actual file path
+    private var resolvedPaths: [String: String] = [:]
+
+    /// Build session file path, with fallback to find the file if cwd doesn't match
+    /// Claude Code sends current working directory in hooks, but stores files in the *project* directory
+    /// These can differ if user cd's around during a session
+    private func sessionFilePath(sessionId: String, cwd: String) -> String {
+        // Check cache first
+        if let cached = resolvedPaths[sessionId] {
+            return cached
+        }
+
+        let fileManager = FileManager.default
+        let projectsBase = NSHomeDirectory() + "/.claude/projects/"
+
+        // Try the given cwd first
+        let primaryDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+        let primaryPath = projectsBase + primaryDir + "/" + sessionId + ".jsonl"
+        if fileManager.fileExists(atPath: primaryPath) {
+            resolvedPaths[sessionId] = primaryPath
+            return primaryPath
+        }
+
+        // Try parent directories (in case we're in a subdirectory)
+        var currentPath = cwd
+        while !currentPath.isEmpty && currentPath != "/" {
+            currentPath = (currentPath as NSString).deletingLastPathComponent
+            if currentPath == "/" { break }
+
+            let parentDir = currentPath.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+            let parentPath = projectsBase + parentDir + "/" + sessionId + ".jsonl"
+            if fileManager.fileExists(atPath: parentPath) {
+                Self.logger.info("Found session file in parent: \(parentPath, privacy: .public)")
+                resolvedPaths[sessionId] = parentPath
+                return parentPath
+            }
+        }
+
+        // Last resort: search all project directories for this sessionId
+        if let projectDirs = try? fileManager.contentsOfDirectory(atPath: projectsBase) {
+            for dir in projectDirs {
+                let searchPath = projectsBase + dir + "/" + sessionId + ".jsonl"
+                if fileManager.fileExists(atPath: searchPath) {
+                    Self.logger.info("Found session file by search: \(searchPath, privacy: .public)")
+                    resolvedPaths[sessionId] = searchPath
+                    return searchPath
+                }
+            }
+        }
+
+        // Fallback to primary path (file might not exist yet)
+        return primaryPath
+    }
+
+    /// Static version for use in static contexts (doesn't use cache)
     private static func sessionFilePath(sessionId: String, cwd: String) -> String {
         let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
         return NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
@@ -537,7 +683,9 @@ actor ConversationParser {
             }
         }
 
-        guard !blocks.isEmpty else { return nil }
+        guard !blocks.isEmpty else {
+            return nil
+        }
 
         let role: ChatRole = type == "user" ? .user : .assistant
 

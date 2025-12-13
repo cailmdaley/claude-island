@@ -35,8 +35,11 @@ class ChatHistoryManager: ObservableObject {
         loadedSessions.contains(sessionId)
     }
 
-    func loadFromFile(sessionId: String, cwd: String) async {
-        guard !loadedSessions.contains(sessionId) else { return }
+    func loadFromFile(sessionId: String, cwd: String, forceRemote: Bool = false) async {
+        // For remote sessions with no history, force a reload
+        if !forceRemote {
+            guard !loadedSessions.contains(sessionId) else { return }
+        }
         loadedSessions.insert(sessionId)
         await SessionStore.shared.process(.loadHistory(sessionId: sessionId, cwd: cwd))
     }
@@ -80,7 +83,13 @@ class ChatHistoryManager: ObservableObject {
             let filteredItems = filterOutSubagentTools(session.chatItems)
             newHistories[session.sessionId] = filteredItems
             newAgentDescriptions[session.sessionId] = session.subagentState.agentDescriptions
-            loadedSessions.insert(session.sessionId)
+
+            // Only mark as loaded if:
+            // - Local session (always mark as loaded)
+            // - Remote session WITH content (don't mark empty remote sessions as loaded)
+            if !session.isRemote || !filteredItems.isEmpty {
+                loadedSessions.insert(session.sessionId)
+            }
         }
         histories = newHistories
         agentDescriptions = newAgentDescriptions

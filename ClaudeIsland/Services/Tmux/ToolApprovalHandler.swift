@@ -3,6 +3,7 @@
 //  ClaudeIsland
 //
 //  Handles Claude tool approval operations via tmux
+//  Supports both local and remote (SSH) sessions
 //
 
 import Foundation
@@ -17,27 +18,27 @@ actor ToolApprovalHandler {
 
     private init() {}
 
+    // MARK: - Local Session Methods (existing API)
+
     /// Approve a tool once (sends '1' + Enter)
     func approveOnce(target: TmuxTarget) async -> Bool {
-        await sendKeys(to: target, keys: "1", pressEnter: true)
+        await sendKeys(to: target.targetString, keys: "1", pressEnter: true, remoteHost: nil)
     }
 
     /// Approve a tool always (sends '2' + Enter)
     func approveAlways(target: TmuxTarget) async -> Bool {
-        await sendKeys(to: target, keys: "2", pressEnter: true)
+        await sendKeys(to: target.targetString, keys: "2", pressEnter: true, remoteHost: nil)
     }
 
     /// Reject a tool with optional message
     func reject(target: TmuxTarget, message: String? = nil) async -> Bool {
-        // First send 'n' + Enter to reject
-        guard await sendKeys(to: target, keys: "n", pressEnter: true) else {
+        guard await sendKeys(to: target.targetString, keys: "n", pressEnter: true, remoteHost: nil) else {
             return false
         }
 
-        // If there's a message, send it after a brief delay
         if let message = message, !message.isEmpty {
             try? await Task.sleep(for: .milliseconds(100))
-            return await sendKeys(to: target, keys: message, pressEnter: true)
+            return await sendKeys(to: target.targetString, keys: message, pressEnter: true, remoteHost: nil)
         }
 
         return true
@@ -45,26 +46,61 @@ actor ToolApprovalHandler {
 
     /// Send a message to a tmux target
     func sendMessage(_ message: String, to target: TmuxTarget) async -> Bool {
-        await sendKeys(to: target, keys: message, pressEnter: true)
+        await sendKeys(to: target.targetString, keys: message, pressEnter: true, remoteHost: nil)
+    }
+
+    // MARK: - Remote Session Methods
+
+    /// Approve a tool once for a remote session
+    func approveOnce(remoteTmuxTarget: String, remoteHost: String) async -> Bool {
+        await sendKeys(to: remoteTmuxTarget, keys: "1", pressEnter: true, remoteHost: remoteHost)
+    }
+
+    /// Approve a tool always for a remote session
+    func approveAlways(remoteTmuxTarget: String, remoteHost: String) async -> Bool {
+        await sendKeys(to: remoteTmuxTarget, keys: "2", pressEnter: true, remoteHost: remoteHost)
+    }
+
+    /// Reject a tool for a remote session with optional message
+    func reject(remoteTmuxTarget: String, remoteHost: String, message: String? = nil) async -> Bool {
+        guard await sendKeys(to: remoteTmuxTarget, keys: "n", pressEnter: true, remoteHost: remoteHost) else {
+            return false
+        }
+
+        if let message = message, !message.isEmpty {
+            try? await Task.sleep(for: .milliseconds(100))
+            return await sendKeys(to: remoteTmuxTarget, keys: message, pressEnter: true, remoteHost: remoteHost)
+        }
+
+        return true
+    }
+
+    /// Send a message to a remote tmux target
+    func sendMessage(_ message: String, remoteTmuxTarget: String, remoteHost: String) async -> Bool {
+        await sendKeys(to: remoteTmuxTarget, keys: message, pressEnter: true, remoteHost: remoteHost)
     }
 
     // MARK: - Private Methods
 
-    private func sendKeys(to target: TmuxTarget, keys: String, pressEnter: Bool) async -> Bool {
+    private func sendKeys(to targetStr: String, keys: String, pressEnter: Bool, remoteHost: String?) async -> Bool {
+        if let remoteHost = remoteHost {
+            return await sendKeysViaSSH(to: targetStr, keys: keys, pressEnter: pressEnter, host: remoteHost)
+        } else {
+            return await sendKeysLocally(to: targetStr, keys: keys, pressEnter: pressEnter)
+        }
+    }
+
+    private func sendKeysLocally(to targetStr: String, keys: String, pressEnter: Bool) async -> Bool {
         guard let tmuxPath = await TmuxPathFinder.shared.getTmuxPath() else {
             return false
         }
 
-        // tmux send-keys needs literal text and Enter as separate arguments
-        // Use -l flag to send keys literally (prevents interpreting special chars)
-        let targetStr = target.targetString
         let textArgs = ["send-keys", "-t", targetStr, "-l", keys]
 
         do {
             Self.logger.debug("Sending text to \(targetStr, privacy: .public)")
             _ = try await ProcessExecutor.shared.run(tmuxPath, arguments: textArgs)
 
-            // Send Enter as a separate command if needed
             if pressEnter {
                 Self.logger.debug("Sending Enter key")
                 let enterArgs = ["send-keys", "-t", targetStr, "Enter"]
@@ -73,6 +109,29 @@ actor ToolApprovalHandler {
             return true
         } catch {
             Self.logger.error("Error: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    private func sendKeysViaSSH(to targetStr: String, keys: String, pressEnter: Bool, host: String) async -> Bool {
+        // Escape single quotes in keys for shell safety
+        let escapedKeys = keys.replacingOccurrences(of: "'", with: "'\"'\"'")
+
+        // Build tmux command to run on remote host
+        let tmuxTextCmd = "tmux send-keys -t '\(targetStr)' -l '\(escapedKeys)'"
+
+        do {
+            Self.logger.debug("Sending text via SSH to \(host, privacy: .public):\(targetStr, privacy: .public)")
+            _ = try await ProcessExecutor.shared.run("/usr/bin/ssh", arguments: [host, tmuxTextCmd])
+
+            if pressEnter {
+                Self.logger.debug("Sending Enter key via SSH")
+                let tmuxEnterCmd = "tmux send-keys -t '\(targetStr)' Enter"
+                _ = try await ProcessExecutor.shared.run("/usr/bin/ssh", arguments: [host, tmuxEnterCmd])
+            }
+            return true
+        } catch {
+            Self.logger.error("SSH error: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }
