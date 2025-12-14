@@ -267,27 +267,13 @@ struct InstanceRow: View {
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
-                HStack(spacing: 8) {
-                    // Chat icon - always show
-                    IconButton(icon: "bubble.left") {
-                        onChat()
+                // Focus icon only (chat via single-click, archive via chat view)
+                if session.isInTmux && isYabaiAvailable {
+                    IconButton(icon: "eye") {
+                        onFocus()
                     }
-
-                    // Focus icon (only for tmux instances with yabai)
-                    if session.isInTmux && isYabaiAvailable {
-                        IconButton(icon: "eye") {
-                            onFocus()
-                        }
-                    }
-
-                    // Archive button - only for idle or completed sessions
-                    if session.phase == .idle || session.phase == .waitingForInput {
-                        IconButton(icon: "archivebox") {
-                            onArchive()
-                        }
-                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
         .padding(.leading, 8)
