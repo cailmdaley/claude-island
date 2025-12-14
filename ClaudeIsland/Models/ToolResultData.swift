@@ -267,27 +267,52 @@ struct ToolStatusDisplay {
     static func running(for toolName: String, input: [String: String]) -> ToolStatusDisplay {
         switch toolName {
         case "Read":
+            if let filePath = input["file_path"] {
+                let filename = URL(fileURLWithPath: filePath).lastPathComponent
+                return ToolStatusDisplay(text: "Reading \(filename)", isRunning: true)
+            }
             return ToolStatusDisplay(text: "Reading...", isRunning: true)
         case "Edit":
+            if let filePath = input["file_path"] {
+                let filename = URL(fileURLWithPath: filePath).lastPathComponent
+                return ToolStatusDisplay(text: "Editing \(filename)", isRunning: true)
+            }
             return ToolStatusDisplay(text: "Editing...", isRunning: true)
         case "Write":
+            if let filePath = input["file_path"] {
+                let filename = URL(fileURLWithPath: filePath).lastPathComponent
+                return ToolStatusDisplay(text: "Writing \(filename)", isRunning: true)
+            }
             return ToolStatusDisplay(text: "Writing...", isRunning: true)
         case "Bash":
             if let desc = input["description"], !desc.isEmpty {
                 return ToolStatusDisplay(text: desc, isRunning: true)
             }
+            if let command = input["command"] {
+                let firstLine = command.components(separatedBy: "\n").first ?? command
+                let truncated = String(firstLine.prefix(60))
+                return ToolStatusDisplay(text: truncated, isRunning: true)
+            }
             return ToolStatusDisplay(text: "Running...", isRunning: true)
-        case "Grep", "Glob":
+        case "Grep":
             if let pattern = input["pattern"] {
-                return ToolStatusDisplay(text: "Searching: \(pattern)", isRunning: true)
+                return ToolStatusDisplay(text: "grep: \(pattern)", isRunning: true)
             }
             return ToolStatusDisplay(text: "Searching...", isRunning: true)
+        case "Glob":
+            if let pattern = input["pattern"] {
+                return ToolStatusDisplay(text: "glob: \(pattern)", isRunning: true)
+            }
+            return ToolStatusDisplay(text: "Finding files...", isRunning: true)
         case "WebSearch":
             if let query = input["query"] {
                 return ToolStatusDisplay(text: "Searching: \(query)", isRunning: true)
             }
             return ToolStatusDisplay(text: "Searching...", isRunning: true)
         case "WebFetch":
+            if let url = input["url"] {
+                return ToolStatusDisplay(text: "Fetching \(url)", isRunning: true)
+            }
             return ToolStatusDisplay(text: "Fetching...", isRunning: true)
         case "Task":
             if let desc = input["description"], !desc.isEmpty {

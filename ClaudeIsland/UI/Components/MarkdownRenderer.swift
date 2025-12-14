@@ -41,6 +41,7 @@ struct MarkdownText: View {
     let text: String
     let baseColor: Color
     let fontSize: CGFloat
+    @Environment(\.theme) private var theme
 
     private let document: Document
 
@@ -74,6 +75,7 @@ private struct BlockRenderer: View {
     let markup: Markup
     let baseColor: Color
     let fontSize: CGFloat
+    @Environment(\.theme) private var theme
 
     var body: some View {
         content
@@ -189,6 +191,7 @@ private struct InlineRenderer: View {
     let children: [InlineMarkup]
     let baseColor: Color
     let fontSize: CGFloat
+    @Environment(\.theme) private var theme
 
     var body: some View {
         asText()
@@ -222,7 +225,7 @@ private struct InlineRenderer: View {
         } else if let link = inline as? Markdown.Link {
             let plainText = link.plainText
             return SwiftUI.Text(plainText)
-                .foregroundColor(Color.blue)
+                .foregroundColor(theme.terminalBlue)
                 .underline()
         } else if let strike = inline as? Strikethrough {
             let plainText = strike.plainText
@@ -230,7 +233,7 @@ private struct InlineRenderer: View {
                 .strikethrough()
                 .foregroundColor(baseColor)
         } else if inline is SoftBreak {
-            return SwiftUI.Text(" ")
+            return SwiftUI.Text("\n")
         } else if inline is LineBreak {
             return SwiftUI.Text("\n")
         } else {
@@ -251,16 +254,17 @@ private struct InlineRenderer: View {
 
 private struct CodeBlockView: View {
     let code: String
+    @Environment(\.theme) private var theme
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             SwiftUI.Text(code)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundColor(theme.textSecondary)
                 .padding(10)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.08))
+        .background(theme.codeBackground)
         .cornerRadius(6)
     }
 }

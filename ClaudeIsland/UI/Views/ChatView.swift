@@ -444,25 +444,44 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField(canSendMessages ? "Message Claude..." : "Open Claude Code in tmux to enable messaging", text: $inputText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .foregroundColor(canSendMessages ? theme.textPrimary : theme.textDim)
-                .focused($isInputFocused)
-                .disabled(!canSendMessages)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(canSendMessages ? theme.backgroundHover : theme.backgroundElevated)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .strokeBorder(theme.backgroundHover, lineWidth: 1)
-                        )
-                )
-                .onSubmit {
-                    sendMessage()
+            ZStack(alignment: .topLeading) {
+                // Placeholder text (shown when empty)
+                if inputText.isEmpty {
+                    Text(canSendMessages ? "Message Claude..." : "Open Claude Code in tmux to enable messaging")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.textDim)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                 }
+
+                TextEditor(text: $inputText)
+                    .font(.system(size: 13))
+                    .foregroundColor(canSendMessages ? theme.textPrimary : theme.textDim)
+                    .scrollContentBackground(.hidden)
+                    .focused($isInputFocused)
+                    .disabled(!canSendMessages)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .frame(minHeight: 36, maxHeight: 120)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onKeyPress(.return, phases: .down) { keyPress in
+                        // Shift+Enter = insert newline (handled by TextEditor)
+                        // Enter alone = send message
+                        if !keyPress.modifiers.contains(.shift) {
+                            sendMessage()
+                            return .handled
+                        }
+                        return .ignored
+                    }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(canSendMessages ? theme.backgroundHover : theme.backgroundElevated)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .strokeBorder(theme.backgroundHover, lineWidth: 1)
+                    )
+            )
 
             Button {
                 sendMessage()
