@@ -47,6 +47,14 @@ class NotchViewModel: ObservableObject {
     @Published var contentType: NotchContentType = .instances
     @Published var isHovering: Bool = false
 
+    // MARK: - Keyboard Navigation State
+
+    /// Currently selected session index (nil = no selection)
+    @Published var selectedSessionIndex: Int? = nil
+
+    /// Cached sessions for keyboard navigation (synced from view)
+    private(set) var cachedSessions: [SessionState] = []
+
     // MARK: - Dependencies
 
     private let screenSelector = ScreenSelector.shared
@@ -72,10 +80,12 @@ class NotchViewModel: ObservableObject {
                 height: 580
             )
         case .menu:
-            // Compact size for settings menu
+            // Menu size - account for all rows (~40px each) plus dividers
+            // Rows: Back, Screen, Sound, Theme, Login, Hooks, Accessibility, Update, GitHub, Restart, Quit = 11 rows
+            // Plus 4 dividers = ~15 rows worth of space
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
-                height: 420 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
+                height: 520 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
             )
         case .instances:
             return CGSize(
@@ -232,6 +242,9 @@ class NotchViewModel: ObservableObject {
         openReason = reason
         status = .opened
 
+        // Clear keyboard selection on fresh open
+        clearSelection()
+
         // Don't restore chat on notification - show instances list instead
         if reason == .notification {
             currentChatSession = nil
@@ -292,5 +305,58 @@ class NotchViewModel: ObservableObject {
             guard let self = self, self.openReason == .boot else { return }
             self.notchClose()
         }
+    }
+
+    // MARK: - Keyboard Navigation
+
+    /// Update cached sessions from the view (call when sessions change)
+    func updateSessions(_ sessions: [SessionState]) {
+        cachedSessions = sessions
+
+        // Clamp selection if out of bounds
+        if let index = selectedSessionIndex, index >= sessions.count {
+            selectedSessionIndex = sessions.isEmpty ? nil : sessions.count - 1
+        }
+    }
+
+    /// Select next session (down arrow), wrapping to first
+    func selectNext() {
+        guard !cachedSessions.isEmpty else { return }
+
+        if let current = selectedSessionIndex {
+            selectedSessionIndex = (current + 1) % cachedSessions.count
+        } else {
+            selectedSessionIndex = 0
+        }
+    }
+
+    /// Select previous session (up arrow), wrapping to last
+    func selectPrevious() {
+        guard !cachedSessions.isEmpty else { return }
+
+        if let current = selectedSessionIndex {
+            selectedSessionIndex = current == 0 ? cachedSessions.count - 1 : current - 1
+        } else {
+            selectedSessionIndex = cachedSessions.count - 1
+        }
+    }
+
+    /// Get the currently selected session
+    func selectedSession() -> SessionState? {
+        guard let index = selectedSessionIndex, index < cachedSessions.count else {
+            return nil
+        }
+        return cachedSessions[index]
+    }
+
+    /// Open chat for the selected session (enter key)
+    func openSelectedChat() {
+        guard let session = selectedSession() else { return }
+        showChat(for: session)
+    }
+
+    /// Clear selection (called on fresh open)
+    func clearSelection() {
+        selectedSessionIndex = nil
     }
 }

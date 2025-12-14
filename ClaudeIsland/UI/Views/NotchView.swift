@@ -20,6 +20,14 @@ struct NotchView: View {
     @StateObject private var sessionMonitor = ClaudeSessionMonitor()
     @StateObject private var activityCoordinator = NotchActivityCoordinator.shared
     @ObservedObject private var updateManager = UpdateManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
+
+    private var theme: any Theme { themeManager.currentTheme }
+
+    /// When closed, always use dark colors to match the physical notch
+    private var notchBackground: Color {
+        viewModel.status == .opened ? theme.background : .black
+    }
     @State private var previousPendingIds: Set<String> = []
     @State private var previousWaitingForInputIds: Set<String> = []
     @State private var waitingForInputTimestamps: [String: Date] = [:]  // sessionId -> when it entered waitingForInput
@@ -149,16 +157,16 @@ struct NotchView: View {
                             : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], viewModel.status == .opened ? 12 : 0)
-                    .background(.black)
+                    .background(notchBackground)
                     .clipShape(currentNotchShape)
                     .overlay(alignment: .top) {
                         Rectangle()
-                            .fill(.black)
+                            .fill(notchBackground)
                             .frame(height: 1)
                             .padding(.horizontal, topCornerRadius)
                     }
                     .shadow(
-                        color: (viewModel.status == .opened || isHovering) ? .black.opacity(0.7) : .clear,
+                        color: (viewModel.status == .opened || isHovering) ? notchBackground.opacity(0.7) : .clear,
                         radius: 6
                     )
                     .frame(
@@ -187,7 +195,11 @@ struct NotchView: View {
         }
         .opacity(isVisible ? 1 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .preferredColorScheme(.dark)
+        .environment(\.theme, themeManager.currentTheme)
+        .preferredColorScheme(themeManager.preference == .light ? .light : .dark)
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return, .escape]) { keyPress in
+            handleKeyPress(keyPress.key)
+        }
         .onAppear {
             sessionMonitor.startMonitoring()
             // On non-notched devices, keep visible so users have a target to interact with
@@ -272,9 +284,9 @@ struct NotchView: View {
                     .fill(.clear)
                     .frame(width: closedNotchSize.width - 20)
             } else {
-                // Closed with activity: black spacer (with optional bounce)
+                // Closed with activity: black spacer to match physical notch (with optional bounce)
                 Rectangle()
-                    .fill(.black)
+                    .fill(Color.black)
                     .frame(width: closedNotchSize.width - cornerRadiusInsets.closed.top + (isBouncing ? 16 : 0))
             }
 
@@ -286,7 +298,7 @@ struct NotchView: View {
                         .frame(width: viewModel.status == .opened ? 20 : sideWidth)
                 } else if hasWaitingForInput {
                     // Checkmark for waiting-for-input on the right side
-                    ReadyForInputIndicatorIcon(size: 14, color: TerminalColors.green)
+                    ReadyForInputIndicatorIcon(size: 14, color: theme.terminalGreen)
                         .matchedGeometryEffect(id: "spinner", in: activityNamespace, isSource: showClosedActivity)
                         .frame(width: viewModel.status == .opened ? 20 : sideWidth)
                 }
@@ -326,14 +338,14 @@ struct NotchView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: viewModel.contentType == .menu ? "xmark" : "line.3.horizontal")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                         .frame(width: 22, height: 22)
                         .contentShape(Rectangle())
 
                     // Green dot for unseen update
                     if updateManager.hasUnseenUpdate && viewModel.contentType != .menu {
                         Circle()
-                            .fill(TerminalColors.green)
+                            .fill(theme.terminalGreen)
                             .frame(width: 6, height: 6)
                             .offset(x: -2, y: 2)
                     }
@@ -417,14 +429,6 @@ struct NotchView: View {
 
     private func handlePendingSessionsChange(_ sessions: [SessionState]) {
         let currentIds = Set(sessions.map { $0.stableId })
-        let newPendingIds = currentIds.subtracting(previousPendingIds)
-
-        if !newPendingIds.isEmpty &&
-           viewModel.status == .closed &&
-           !TerminalVisibilityDetector.isTerminalVisibleOnCurrentSpace() {
-            viewModel.notchOpen(reason: .notification)
-        }
-
         previousPendingIds = currentIds
     }
 
@@ -499,5 +503,64 @@ struct NotchView: View {
         }
 
         return false
+    }
+
+    // MARK: - Keyboard Navigation
+
+    private func handleKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
+        // Only handle keys when opened
+        guard viewModel.status == .opened else { return .ignored }
+
+        switch viewModel.contentType {
+        case .instances:
+            return handleInstancesKeyPress(key)
+        case .chat:
+            return handleChatKeyPress(key)
+        case .menu:
+            return handleMenuKeyPress(key)
+        }
+    }
+
+    private func handleInstancesKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
+        switch key {
+        case .upArrow:
+            viewModel.selectPrevious()
+            return .handled
+        case .downArrow:
+            viewModel.selectNext()
+            return .handled
+        case .rightArrow, .return:
+            viewModel.openSelectedChat()
+            return .handled
+        case .escape:
+            viewModel.notchClose()
+            return .handled
+        default:
+            return .ignored
+        }
+    }
+
+    private func handleChatKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
+        switch key {
+        case .leftArrow:
+            // Go back to instances (unless user is typing in input field)
+            viewModel.exitChat()
+            return .handled
+        case .escape:
+            viewModel.exitChat()
+            return .handled
+        default:
+            return .ignored
+        }
+    }
+
+    private func handleMenuKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
+        switch key {
+        case .leftArrow, .escape:
+            viewModel.toggleMenu()
+            return .handled
+        default:
+            return .ignored
+        }
     }
 }

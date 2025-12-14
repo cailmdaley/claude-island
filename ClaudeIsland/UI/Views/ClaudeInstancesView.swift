@@ -67,24 +67,41 @@ struct ClaudeInstancesView: View {
     }
 
     private var instancesList: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(spacing: 2) {
-                ForEach(sortedInstances) { session in
-                    InstanceRow(
-                        session: session,
-                        onFocus: { focusSession(session) },
-                        onChat: { openChat(session) },
-                        onArchive: { archiveSession(session) },
-                        onApprove: { approveSession(session) },
-                        onApproveAlways: { approveAlwaysSession(session) },
-                        onReject: { rejectSession(session) }
-                    )
-                    .id(session.stableId)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: 2) {
+                    ForEach(Array(sortedInstances.enumerated()), id: \.element.stableId) { index, session in
+                        InstanceRow(
+                            session: session,
+                            isSelected: viewModel.selectedSessionIndex == index,
+                            onFocus: { focusSession(session) },
+                            onChat: { openChat(session) },
+                            onArchive: { archiveSession(session) },
+                            onApprove: { approveSession(session) },
+                            onApproveAlways: { approveAlwaysSession(session) },
+                            onReject: { rejectSession(session) }
+                        )
+                        .id(session.stableId)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .onAppear {
+                viewModel.updateSessions(sortedInstances)
+            }
+            .onChange(of: sortedInstances) { _, newSessions in
+                viewModel.updateSessions(newSessions)
+            }
+            .onChange(of: viewModel.selectedSessionIndex) { _, newIndex in
+                // Scroll selected row into view
+                if let index = newIndex, index < sortedInstances.count {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(sortedInstances[index].stableId, anchor: .center)
+                    }
                 }
             }
-            .padding(.vertical, 4)
         }
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     // MARK: - Actions
@@ -126,6 +143,7 @@ struct ClaudeInstancesView: View {
 
 struct InstanceRow: View {
     let session: SessionState
+    var isSelected: Bool = false
     let onFocus: () -> Void
     let onChat: () -> Void
     let onArchive: () -> Void
@@ -155,6 +173,16 @@ struct InstanceRow: View {
     /// Whether this is a notification-based prompt (no "always" option)
     private var isNotificationPrompt: Bool {
         session.activePermission?.toolUseId.isEmpty ?? false
+    }
+
+    /// Background fill considering hover and selection states
+    private var backgroundFill: Color {
+        if isHovered {
+            return theme.backgroundHover
+        } else if isSelected {
+            return theme.accent.opacity(0.1)
+        }
+        return Color.clear
     }
 
     var body: some View {
@@ -284,7 +312,11 @@ struct InstanceRow: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isWaitingForApproval)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isHovered ? theme.backgroundHover : Color.clear)
+                .fill(backgroundFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? theme.accent.opacity(0.6) : Color.clear, lineWidth: 1.5)
         )
         .onHover { isHovered = $0 }
         .task {
