@@ -160,9 +160,14 @@ struct SessionState: Equatable, Identifiable, Sendable {
         activePermission?.toolUseId
     }
 
-    /// Formatted pending tool input for display
+    /// Formatted pending tool input for display (truncated)
     var pendingToolInput: String? {
         activePermission?.formattedInput
+    }
+
+    /// Full pending tool input for expanded view
+    var fullPendingToolInput: String? {
+        activePermission?.fullFormattedInput
     }
 
     /// Last message content

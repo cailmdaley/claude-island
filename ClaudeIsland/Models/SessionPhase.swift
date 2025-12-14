@@ -15,15 +15,24 @@ struct PermissionContext: Sendable {
     let toolInput: [String: AnyCodable]?
     let receivedAt: Date
 
-    /// Format tool input for display
+    /// Format tool input for display (truncated for preview)
     var formattedInput: String? {
+        formatInput(truncate: true)
+    }
+
+    /// Format tool input for expanded view (full content)
+    var fullFormattedInput: String? {
+        formatInput(truncate: false)
+    }
+
+    private func formatInput(truncate: Bool) -> String? {
         guard let input = toolInput else { return nil }
         var parts: [String] = []
         for (key, value) in input {
             let valueStr: String
             switch value.value {
             case let str as String:
-                valueStr = str.count > 100 ? String(str.prefix(100)) + "..." : str
+                valueStr = truncate && str.count > 100 ? String(str.prefix(100)) + "..." : str
             case let num as Int:
                 valueStr = String(num)
             case let num as Double:

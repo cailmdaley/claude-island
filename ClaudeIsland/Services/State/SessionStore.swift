@@ -225,7 +225,14 @@ actor SessionStore {
 
         let newPhase = event.determinePhase()
 
-        if session.phase.canTransition(to: newPhase) {
+        // Don't let generic notification overwrite a PermissionRequest with tool details
+        // Both fire for the same permission, but PermissionRequest has the actual tool info
+        if case .waitingForApproval(let existingCtx) = session.phase,
+           case .waitingForApproval(let newCtx) = newPhase,
+           !existingCtx.toolUseId.isEmpty,  // We have a real toolUseId
+           newCtx.toolUseId.isEmpty {        // New one is generic notification
+            Self.logger.debug("Ignoring generic notification - already have PermissionRequest with tool details")
+        } else if session.phase.canTransition(to: newPhase) {
             session.phase = newPhase
         } else {
             Self.logger.debug("Invalid transition: \(String(describing: session.phase), privacy: .public) -> \(String(describing: newPhase), privacy: .public), ignoring")

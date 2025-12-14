@@ -6,6 +6,7 @@
 //
 
 import Combine
+import MarkdownUI
 import SwiftUI
 
 struct ChatView: View {
@@ -27,6 +28,7 @@ struct ChatView: View {
     @State private var previousHistoryCount: Int = 0
     @State private var isBottomVisible: Bool = true
     @State private var isRefreshing: Bool = false
+    @State private var showingToolDetails: Bool = false
     @FocusState private var isInputFocused: Bool
 
     init(sessionId: String, initialSession: SessionState, sessionMonitor: ClaudeSessionMonitor, viewModel: NotchViewModel) {
@@ -99,8 +101,19 @@ struct ChatView: View {
                         .transition(.opacity)
                 }
             }
+
+            // Tool detail overlay (uses full content, not truncated)
+            if showingToolDetails, let toolInput = session.fullPendingToolInput {
+                ToolDetailOverlay(
+                    toolName: session.pendingToolName ?? "Tool",
+                    content: toolInput,
+                    onDismiss: { showingToolDetails = false }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isWaitingForApproval)
+        .animation(.spring(response: 0.25, dampingFraction: 0.9), value: showingToolDetails)
         .animation(nil, value: viewModel.status)
         .task {
             // Skip if already loaded (prevents redundant work on view recreation)
@@ -522,7 +535,8 @@ struct ChatView: View {
             onApprove: { approvePermission() },
             onApproveAlways: { approveAlwaysPermission() },
             onDeny: { denyPermission() },
-            hideAlways: isNotificationPrompt
+            hideAlways: isNotificationPrompt,
+            onShowDetails: { showingToolDetails = true }
         )
     }
 
@@ -1225,25 +1239,52 @@ struct ChatApprovalBar: View {
     let onApproveAlways: () -> Void
     let onDeny: () -> Void
     var hideAlways: Bool = false
+    var onShowDetails: (() -> Void)? = nil
     @Environment(\.theme) private var theme
 
     @State private var showContent = false
     @State private var showAllowButton = false
     @State private var showAlwaysButton = false
     @State private var showDenyButton = false
+    @State private var isHoveringToolInfo = false
+
+    /// Whether there's meaningful input to expand
+    private var hasExpandableContent: Bool {
+        guard let input = toolInput else { return false }
+        return input.count > 50 || input.contains("\n")
+    }
 
     var body: some View {
         HStack(spacing: 12) {
-            // Tool info
+            // Tool info (tappable to expand)
             VStack(alignment: .leading, spacing: 2) {
-                Text(MCPToolFormatter.formatToolName(tool))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(theme.warning)
+                HStack(spacing: 4) {
+                    Text(MCPToolFormatter.formatToolName(tool))
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(theme.warning)
+                    if hasExpandableContent {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(theme.textDim)
+                    }
+                }
                 if let input = toolInput {
                     Text(input)
                         .font(.system(size: 11))
                         .foregroundColor(theme.textDim)
                         .lineLimit(1)
+                }
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isHoveringToolInfo && hasExpandableContent ? theme.backgroundHover : Color.clear)
+            )
+            .onHover { isHoveringToolInfo = $0 }
+            .onTapGesture {
+                if hasExpandableContent {
+                    onShowDetails?()
                 }
             }
             .opacity(showContent ? 1 : 0)
@@ -1356,6 +1397,74 @@ struct NewMessagesIndicator: View {
             withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
                 isHovering = hovering
             }
+        }
+    }
+}
+
+// MARK: - Tool Detail Overlay
+
+/// Full-screen overlay showing expanded tool details with markdown rendering
+struct ToolDetailOverlay: View {
+    let toolName: String
+    let content: String
+    let onDismiss: () -> Void
+    @Environment(\.theme) private var theme
+
+    /// Display content - extracts and formats the content for reading
+    private var displayContent: String {
+        // For Write tool, extract just the content value
+        if let contentRange = content.range(of: "content: ") {
+            return String(content[contentRange.upperBound...])
+        }
+        return content
+    }
+
+    var body: some View {
+        ZStack {
+            // Dimmed background
+            theme.background.opacity(0.95)
+                .onTapGesture { onDismiss() }
+
+            VStack(alignment: .leading, spacing: 0) {
+                // Header
+                HStack {
+                    Text(MCPToolFormatter.formatToolName(toolName))
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundColor(theme.warning)
+
+                    Spacer()
+
+                    Button {
+                        onDismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(theme.textDim)
+                            .frame(width: 24, height: 24)
+                            .background(theme.backgroundHover)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(theme.backgroundElevated)
+
+                // Content
+                ScrollView {
+                    Markdown(displayContent)
+                        .markdownTextStyle {
+                            ForegroundColor(theme.textPrimary)
+                            FontSize(13)
+                        }
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                }
+            }
+            .background(theme.background)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(12)
         }
     }
 }

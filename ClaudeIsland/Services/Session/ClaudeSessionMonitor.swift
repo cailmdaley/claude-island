@@ -143,22 +143,17 @@ class ClaudeSessionMonitor: ObservableObject {
                 return
             }
 
-            // For PermissionRequest events, use socket response
+            // For PermissionRequest events, use socket response with reason
+            // The reason gets passed through to Claude via the hook output
             HookSocketServer.shared.respondToPermission(
                 toolUseId: permission.toolUseId,
                 decision: "deny",
-                reason: nil  // Don't send reason via socket, we'll send it via tmux
+                reason: reason
             )
 
             await SessionStore.shared.process(
                 .permissionDenied(sessionId: sessionId, toolUseId: permission.toolUseId, reason: reason)
             )
-
-            // If there's a message, send it via tmux after denial is processed
-            if let message = reason, !message.isEmpty {
-                try? await Task.sleep(for: .milliseconds(500))  // Wait for Claude to resume
-                _ = await TmuxController.shared.sendMessage(message, to: session)
-            }
         }
     }
 
