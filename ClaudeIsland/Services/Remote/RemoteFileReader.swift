@@ -80,7 +80,11 @@ actor RemoteFileReader {
 
     /// Fetch agent JSONL for subagent tools
     func fetchAgentFile(host: String, agentId: String, cwd: String) async -> String? {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+        // Claude escapes: / → -, . → -, _ → -
+        let projectDir = cwd
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "-")
+            .replacingOccurrences(of: "_", with: "-")
         let remotePath = "~/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
         return await fetchFile(host: host, path: remotePath)
     }

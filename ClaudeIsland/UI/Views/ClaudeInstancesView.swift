@@ -11,6 +11,7 @@ import SwiftUI
 struct ClaudeInstancesView: View {
     @ObservedObject var sessionMonitor: ClaudeSessionMonitor
     @ObservedObject var viewModel: NotchViewModel
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if sessionMonitor.instances.isEmpty {
@@ -26,11 +27,11 @@ struct ClaudeInstancesView: View {
         VStack(spacing: 8) {
             Text("No sessions")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(theme.textDim)
 
             Text("Run claude in terminal")
                 .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.25))
+                .foregroundColor(theme.textDimmer)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -135,8 +136,8 @@ struct InstanceRow: View {
     @State private var isHovered = false
     @State private var spinnerPhase = 0
     @State private var isYabaiAvailable = false
+    @Environment(\.theme) private var theme
 
-    private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
     private let spinnerSymbols = ["·", "✢", "✳", "∗", "✻", "✽"]
     private let spinnerTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
 
@@ -151,6 +152,13 @@ struct InstanceRow: View {
         return toolName == "AskUserQuestion"
     }
 
+    /// Whether this is a notification-based prompt (no "always" option)
+    private var isNotificationPrompt: Bool {
+        let toolUseId = session.activePermission?.toolUseId ?? "nil"
+        print("🔵 isNotificationPrompt check: toolUseId='\(toolUseId)', isEmpty=\(toolUseId.isEmpty)")
+        return session.activePermission?.toolUseId.isEmpty ?? false
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             // State indicator on left
@@ -161,7 +169,7 @@ struct InstanceRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.displayTitle)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(theme.textPrimary)
                     .lineLimit(1)
 
                 // Show tool call when waiting for approval, otherwise last activity
@@ -170,16 +178,16 @@ struct InstanceRow: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(MCPToolFormatter.formatToolName(toolName))
                             .font(.system(size: 11, weight: .medium, design: .monospaced))
-                            .foregroundColor(TerminalColors.amber.opacity(0.9))
+                            .foregroundColor(theme.terminalAmber.opacity(0.9))
                         if isInteractiveTool {
                             Text("Needs your input")
                                 .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(theme.textSecondary)
                                 .lineLimit(1)
                         } else if let input = session.pendingToolInput {
                             Text(input)
                                 .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(theme.textSecondary)
                                 .lineLimit(2)
                         }
                     }
@@ -191,12 +199,12 @@ struct InstanceRow: View {
                             if let toolName = session.lastToolName {
                                 Text(MCPToolFormatter.formatToolName(toolName))
                                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(theme.textSecondary)
                             }
                             if let input = session.lastMessage {
                                 Text(input)
                                     .font(.system(size: 11))
-                                    .foregroundColor(.white.opacity(0.4))
+                                    .foregroundColor(theme.textDim)
                                     .lineLimit(1)
                             }
                         }
@@ -205,11 +213,11 @@ struct InstanceRow: View {
                         HStack(spacing: 4) {
                             Text("You:")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(theme.textSecondary)
                             if let msg = session.lastMessage {
                                 Text(msg)
                                     .font(.system(size: 11))
-                                    .foregroundColor(.white.opacity(0.4))
+                                    .foregroundColor(theme.textDim)
                                     .lineLimit(1)
                             }
                         }
@@ -218,14 +226,14 @@ struct InstanceRow: View {
                         if let msg = session.lastMessage {
                             Text(msg)
                                 .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(theme.textDim)
                                 .lineLimit(1)
                         }
                     }
                 } else if let lastMsg = session.lastMessage {
                     Text(lastMsg)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                         .lineLimit(1)
                 }
             }
@@ -254,7 +262,8 @@ struct InstanceRow: View {
                     onChat: onChat,
                     onApprove: onApprove,
                     onApproveAlways: onApproveAlways,
-                    onReject: onReject
+                    onReject: onReject,
+                    hideAlways: isNotificationPrompt
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
@@ -291,7 +300,7 @@ struct InstanceRow: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isWaitingForApproval)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isHovered ? Color.white.opacity(0.06) : Color.clear)
+                .fill(isHovered ? theme.backgroundHover : Color.clear)
         )
         .onHover { isHovered = $0 }
         .task {
@@ -305,24 +314,24 @@ struct InstanceRow: View {
         case .processing, .compacting:
             Text(spinnerSymbols[spinnerPhase % spinnerSymbols.count])
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(claudeOrange)
+                .foregroundColor(theme.accent)
                 .onReceive(spinnerTimer) { _ in
                     spinnerPhase = (spinnerPhase + 1) % spinnerSymbols.count
                 }
         case .waitingForApproval:
             Text(spinnerSymbols[spinnerPhase % spinnerSymbols.count])
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(TerminalColors.amber)
+                .foregroundColor(theme.terminalAmber)
                 .onReceive(spinnerTimer) { _ in
                     spinnerPhase = (spinnerPhase + 1) % spinnerSymbols.count
                 }
         case .waitingForInput:
             Circle()
-                .fill(TerminalColors.green)
+                .fill(theme.terminalGreen)
                 .frame(width: 6, height: 6)
         case .idle, .ended:
             Circle()
-                .fill(Color.white.opacity(0.2))
+                .fill(theme.textDimmer)
                 .frame(width: 6, height: 6)
         }
     }
@@ -337,11 +346,13 @@ struct InlineApprovalButtons: View {
     let onApprove: () -> Void
     let onApproveAlways: () -> Void
     let onReject: () -> Void
+    var hideAlways: Bool = false
 
     @State private var showChatButton = false
     @State private var showDenyButton = false
     @State private var showAlwaysButton = false
     @State private var showAllowButton = false
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 6) {
@@ -357,38 +368,40 @@ struct InlineApprovalButtons: View {
             } label: {
                 Text("Deny")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.textSecondary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.1))
+                    .background(theme.backgroundElevated)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
-            Button(action: onApproveAlways) {
-                Text("Always")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.2))
-                    .clipShape(Capsule())
+            if !hideAlways {
+                Button(action: onApproveAlways) {
+                    Text("Always")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.textPrimary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(theme.backgroundHover)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .opacity(showAlwaysButton ? 1 : 0)
+                .scaleEffect(showAlwaysButton ? 1 : 0.8)
             }
-            .buttonStyle(.plain)
-            .opacity(showAlwaysButton ? 1 : 0)
-            .scaleEffect(showAlwaysButton ? 1 : 0.8)
 
             Button {
                 onApprove()
             } label: {
                 Text("Allow")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.black)
+                    .foregroundColor(theme.background)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.9))
+                    .background(theme.textPrimary)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -419,6 +432,7 @@ struct IconButton: View {
     let action: () -> Void
 
     @State private var isHovered = false
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button {
@@ -426,11 +440,11 @@ struct IconButton: View {
         } label: {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(isHovered ? .white.opacity(0.8) : .white.opacity(0.4))
+                .foregroundColor(isHovered ? theme.textSecondary : theme.textDim)
                 .frame(width: 24, height: 24)
                 .background(
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(isHovered ? Color.white.opacity(0.1) : Color.clear)
+                        .fill(isHovered ? theme.backgroundElevated : Color.clear)
                 )
         }
         .buttonStyle(.plain)
@@ -443,6 +457,7 @@ struct IconButton: View {
 struct CompactTerminalButton: View {
     let isEnabled: Bool
     let onTap: () -> Void
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button {
@@ -456,10 +471,10 @@ struct CompactTerminalButton: View {
                 Text("Go to Terminal")
                     .font(.system(size: 10, weight: .medium))
             }
-            .foregroundColor(isEnabled ? .white.opacity(0.9) : .white.opacity(0.3))
+            .foregroundColor(isEnabled ? theme.textPrimary : theme.textDimmer)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(isEnabled ? Color.white.opacity(0.15) : Color.white.opacity(0.05))
+            .background(isEnabled ? theme.backgroundHover : theme.backgroundElevated)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -471,6 +486,7 @@ struct CompactTerminalButton: View {
 struct TerminalButton: View {
     let isEnabled: Bool
     let onTap: () -> Void
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Button {
@@ -484,10 +500,10 @@ struct TerminalButton: View {
                 Text("Terminal")
                     .font(.system(size: 11, weight: .medium))
             }
-            .foregroundColor(isEnabled ? .black : .white.opacity(0.4))
+            .foregroundColor(isEnabled ? theme.background : theme.textDim)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(isEnabled ? Color.white.opacity(0.95) : Color.white.opacity(0.1))
+            .background(isEnabled ? theme.textPrimary : theme.backgroundElevated)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)

@@ -199,8 +199,9 @@ actor SessionStore {
             Mixpanel.mainInstance().track(event: "Session Started")
         }
 
-        session.pid = event.pid
+        // Only update pid/tty if present (don't overwrite with nil)
         if let pid = event.pid {
+            session.pid = pid
             let tree = ProcessTreeBuilder.shared.buildTree()
             session.isInTmux = ProcessTreeBuilder.shared.isInTmux(pid: pid, tree: tree)
         }

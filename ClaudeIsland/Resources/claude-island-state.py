@@ -174,6 +174,10 @@ def main():
             state["tool_use_id"] = tool_use_id_from_event
 
     elif event == "PermissionRequest":
+        # Debug
+        with open("/tmp/claude-island-debug.log", "a") as f:
+            f.write(f"PermissionRequest: tool={data.get('tool_name')}\n")
+
         # This is where we can control the permission
         state["status"] = "waiting_for_approval"
         state["tool"] = data.get("tool_name")
@@ -215,11 +219,16 @@ def main():
         # No response or "ask" - let Claude Code show its normal UI
         sys.exit(0)
 
-    elif event == "Notification":
+    if event == "Notification":
         notification_type = data.get("notification_type")
-        # Skip permission_prompt - PermissionRequest hook handles this with better info
+        # Debug: log notification details
+        with open("/tmp/claude-island-debug.log", "a") as f:
+            f.write(f"Notification: type={notification_type}, message={data.get('message', '')[:50]}\n")
         if notification_type == "permission_prompt":
-            sys.exit(0)
+            # Permission prompts should trigger the island notification
+            # PermissionRequest hook may not fire for yes/no-only prompts
+            state["status"] = "waiting_for_approval"
+            state["tool"] = "permission"  # Generic tool name for notification
         elif notification_type == "idle_prompt":
             state["status"] = "waiting_for_input"
         else:

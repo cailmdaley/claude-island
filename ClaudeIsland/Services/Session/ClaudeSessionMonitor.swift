@@ -83,6 +83,19 @@ class ClaudeSessionMonitor: ObservableObject {
                 return
             }
 
+            // For notification-based prompts (empty toolUseId), use tmux keystroke
+            // These are yes/no prompts that don't have a socket waiting for response
+            if permission.toolUseId.isEmpty {
+                let success = await TmuxController.shared.approveOnce(session: session)
+                if success {
+                    await SessionStore.shared.process(
+                        .permissionApproved(sessionId: sessionId, toolUseId: permission.toolUseId)
+                    )
+                }
+                return
+            }
+
+            // For PermissionRequest events, use socket response
             HookSocketServer.shared.respondToPermission(
                 toolUseId: permission.toolUseId,
                 decision: "allow"
@@ -119,6 +132,18 @@ class ClaudeSessionMonitor: ObservableObject {
                 return
             }
 
+            // For notification-based prompts (empty toolUseId), use tmux keystroke
+            if permission.toolUseId.isEmpty {
+                let success = await TmuxController.shared.reject(session: session, message: reason)
+                if success {
+                    await SessionStore.shared.process(
+                        .permissionDenied(sessionId: sessionId, toolUseId: permission.toolUseId, reason: reason)
+                    )
+                }
+                return
+            }
+
+            // For PermissionRequest events, use socket response
             HookSocketServer.shared.respondToPermission(
                 toolUseId: permission.toolUseId,
                 decision: "deny",
