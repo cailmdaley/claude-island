@@ -147,12 +147,18 @@ class ClaudeSessionMonitor: ObservableObject {
             HookSocketServer.shared.respondToPermission(
                 toolUseId: permission.toolUseId,
                 decision: "deny",
-                reason: reason
+                reason: nil  // Don't send reason via socket, we'll send it via tmux
             )
 
             await SessionStore.shared.process(
                 .permissionDenied(sessionId: sessionId, toolUseId: permission.toolUseId, reason: reason)
             )
+
+            // If there's a message, send it via tmux after denial is processed
+            if let message = reason, !message.isEmpty {
+                try? await Task.sleep(for: .milliseconds(500))  // Wait for Claude to resume
+                _ = await TmuxController.shared.sendMessage(message, to: session)
+            }
         }
     }
 

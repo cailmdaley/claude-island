@@ -154,9 +154,7 @@ struct InstanceRow: View {
 
     /// Whether this is a notification-based prompt (no "always" option)
     private var isNotificationPrompt: Bool {
-        let toolUseId = session.activePermission?.toolUseId ?? "nil"
-        print("🔵 isNotificationPrompt check: toolUseId='\(toolUseId)', isEmpty=\(toolUseId.isEmpty)")
-        return session.activePermission?.toolUseId.isEmpty ?? false
+        session.activePermission?.toolUseId.isEmpty ?? false
     }
 
     var body: some View {
@@ -351,6 +349,7 @@ struct InlineApprovalButtons: View {
 
             Button {
                 onReject()
+                onChat()  // Open chat for user to provide alternative instructions
             } label: {
                 Text("Deny")
                     .font(.system(size: 11, weight: .medium))

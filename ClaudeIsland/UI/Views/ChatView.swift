@@ -74,7 +74,7 @@ struct ChatView: View {
                     messageList
                 }
 
-                // Approval bar, interactive prompt, or Input bar
+                // Approval bar (if needed) + Input bar
                 if let tool = approvalTool {
                     if tool == "AskUserQuestion" {
                         // Interactive tools - show prompt to answer in terminal
@@ -84,11 +84,15 @@ struct ChatView: View {
                                 removal: .opacity
                             ))
                     } else {
-                        approvalBar(tool: tool)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .move(edge: .bottom)),
-                                removal: .opacity
-                            ))
+                        // Show approval bar above input bar
+                        VStack(spacing: 0) {
+                            approvalBar(tool: tool)
+                            inputBar
+                        }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .bottom)),
+                            removal: .opacity
+                        ))
                     }
                 } else {
                     inputBar
@@ -590,7 +594,19 @@ struct ChatView: View {
     }
 
     private func denyPermission() {
+        // Capture any typed message before denying
+        let message = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        inputText = ""
+
         sessionMonitor.denyPermission(sessionId: sessionId, reason: nil)
+
+        // If user typed a message, send it after a short delay
+        if !message.isEmpty {
+            Task {
+                try? await Task.sleep(nanoseconds: 300_000_000)  // 300ms
+                await sendToSession(message)
+            }
+        }
     }
 
     private func sendMessage() {
@@ -603,9 +619,14 @@ struct ChatView: View {
         resumeAutoscroll()
         shouldScrollToBottom = true
 
-        // Don't add to history here - it will be synced from JSONL when UserPromptSubmit event fires
-        Task {
-            await sendToSession(text)
+        // If waiting for approval, deny with the message as the reason
+        // This sends "n" + Enter, then the message atomically
+        if isWaitingForApproval {
+            sessionMonitor.denyPermission(sessionId: sessionId, reason: text)
+        } else {
+            Task {
+                await sendToSession(text)
+            }
         }
     }
 

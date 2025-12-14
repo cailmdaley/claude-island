@@ -150,7 +150,6 @@ extension HookEvent {
 
         // Handle permission_prompt notifications (yes/no-only prompts)
         if event == "Notification" && notificationType == "permission_prompt" {
-            NSLog("🔵 permission_prompt notification - returning empty toolUseId")
             return .waitingForApproval(PermissionContext(
                 toolUseId: "",  // No specific tool use for notification-based prompts
                 toolName: tool ?? "permission",

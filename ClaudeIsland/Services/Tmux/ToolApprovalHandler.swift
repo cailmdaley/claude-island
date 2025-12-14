@@ -31,17 +31,19 @@ actor ToolApprovalHandler {
     }
 
     /// Reject a tool with optional message
+    /// Claude Code uses "3" to select the deny/feedback option, then message + Enter
     func reject(target: TmuxTarget, message: String? = nil) async -> Bool {
-        guard await sendKeys(to: target.targetString, keys: "n", pressEnter: true, remoteHost: nil) else {
+        // Select deny option (option 3 in Claude's permission prompt)
+        guard await sendKeys(to: target.targetString, keys: "3", pressEnter: false, remoteHost: nil) else {
             return false
         }
 
-        if let message = message, !message.isEmpty {
-            try? await Task.sleep(for: .milliseconds(100))
-            return await sendKeys(to: target.targetString, keys: message, pressEnter: true, remoteHost: nil)
-        }
+        // Small delay for UI to respond
+        try? await Task.sleep(for: .milliseconds(100))
 
-        return true
+        // Send the message (or empty) and Enter to confirm denial
+        let msg = message ?? ""
+        return await sendKeys(to: target.targetString, keys: msg, pressEnter: true, remoteHost: nil)
     }
 
     /// Send a message to a tmux target
@@ -62,17 +64,19 @@ actor ToolApprovalHandler {
     }
 
     /// Reject a tool for a remote session with optional message
+    /// Claude Code uses "3" to select the deny/feedback option, then message + Enter
     func reject(remoteTmuxTarget: String, remoteHost: String, message: String? = nil) async -> Bool {
-        guard await sendKeys(to: remoteTmuxTarget, keys: "n", pressEnter: true, remoteHost: remoteHost) else {
+        // Select deny option (option 3 in Claude's permission prompt)
+        guard await sendKeys(to: remoteTmuxTarget, keys: "3", pressEnter: false, remoteHost: remoteHost) else {
             return false
         }
 
-        if let message = message, !message.isEmpty {
-            try? await Task.sleep(for: .milliseconds(100))
-            return await sendKeys(to: remoteTmuxTarget, keys: message, pressEnter: true, remoteHost: remoteHost)
-        }
+        // Small delay for UI to respond
+        try? await Task.sleep(for: .milliseconds(100))
 
-        return true
+        // Send the message (or empty) and Enter to confirm denial
+        let msg = message ?? ""
+        return await sendKeys(to: remoteTmuxTarget, keys: msg, pressEnter: true, remoteHost: remoteHost)
     }
 
     /// Send a message to a remote tmux target
