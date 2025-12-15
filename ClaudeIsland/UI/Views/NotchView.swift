@@ -542,11 +542,8 @@ struct NotchView: View {
 
     private func handleChatKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
         switch key {
-        case .leftArrow:
-            // Go back to instances (unless user is typing in input field)
-            viewModel.exitChat()
-            return .handled
         case .escape:
+            // Only Escape exits chat - let arrow keys work in text field
             viewModel.exitChat()
             return .handled
         default:

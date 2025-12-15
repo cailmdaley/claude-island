@@ -313,6 +313,11 @@ class NotchViewModel: ObservableObject {
     func updateSessions(_ sessions: [SessionState]) {
         cachedSessions = sessions
 
+        // Auto-select first session if no selection exists
+        if selectedSessionIndex == nil && !sessions.isEmpty {
+            selectedSessionIndex = 0
+        }
+
         // Clamp selection if out of bounds
         if let index = selectedSessionIndex, index >= sessions.count {
             selectedSessionIndex = sessions.isEmpty ? nil : sessions.count - 1
