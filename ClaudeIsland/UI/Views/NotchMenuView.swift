@@ -19,6 +19,7 @@ struct NotchMenuView: View {
     @ObservedObject private var screenSelector = ScreenSelector.shared
     @ObservedObject private var soundSelector = SoundSelector.shared
     @ObservedObject private var themeManager = ThemeManager.shared
+    @Environment(\.theme) private var theme
     @State private var hooksInstalled: Bool = false
     @State private var launchAtLogin: Bool = false
 
@@ -33,7 +34,7 @@ struct NotchMenuView: View {
             }
 
             Divider()
-                .background(Color.white.opacity(0.08))
+                .background(theme.backgroundElevated)
                 .padding(.vertical, 4)
 
             // Appearance settings
@@ -42,7 +43,7 @@ struct NotchMenuView: View {
             ThemePickerRow(themeManager: themeManager)
 
             Divider()
-                .background(Color.white.opacity(0.08))
+                .background(theme.backgroundElevated)
                 .padding(.vertical, 4)
 
             // System settings
@@ -81,7 +82,7 @@ struct NotchMenuView: View {
             AccessibilityRow(isEnabled: AXIsProcessTrusted())
 
             Divider()
-                .background(Color.white.opacity(0.08))
+                .background(theme.backgroundElevated)
                 .padding(.vertical, 4)
 
             // About
@@ -97,7 +98,7 @@ struct NotchMenuView: View {
             }
 
             Divider()
-                .background(Color.white.opacity(0.08))
+                .background(theme.backgroundElevated)
                 .padding(.vertical, 4)
 
             MenuRow(
@@ -105,7 +106,9 @@ struct NotchMenuView: View {
                 label: "Quit",
                 isDestructive: true
             ) {
-                NSApplication.shared.terminate(nil)
+                // Note: restartApp launches a dummy instance then exits
+                // The dummy instance immediately quits because another is running
+                restartApp()
             }
         }
         .padding(.horizontal, 8)
@@ -126,12 +129,26 @@ struct NotchMenuView: View {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         screenSelector.refreshScreens()
     }
+
+    private func restartApp() {
+        // Launch new instance, then quit
+        let url = Bundle.main.bundleURL
+        let config = NSWorkspace.OpenConfiguration()
+        config.createsNewApplicationInstance = true
+
+        NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                exit(0)
+            }
+        }
+    }
 }
 
 // MARK: - Update Row
 
 struct UpdateRow: View {
     @ObservedObject var updateManager: UpdateManager
+    @Environment(\.theme) private var theme
     @State private var isHovered = false
     @State private var isSpinning = false
 
@@ -151,7 +168,7 @@ struct UpdateRow: View {
                     if case .installing = updateManager.state {
                         Image(systemName: "gear")
                             .font(.system(size: 12))
-                            .foregroundColor(TerminalColors.blue)
+                            .foregroundColor(theme.terminalBlue)
                             .rotationEffect(.degrees(isSpinning ? 360 : 0))
                             .animation(.linear(duration: 1).repeatForever(autoreverses: false), value: isSpinning)
                             .onAppear { isSpinning = true }
@@ -177,7 +194,7 @@ struct UpdateRow: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered && isInteractive ? Color.white.opacity(0.08) : Color.clear)
+                    .fill(isHovered && isInteractive ? theme.backgroundHover : Color.clear)
             )
         }
         .buttonStyle(.plain)
@@ -194,16 +211,16 @@ struct UpdateRow: View {
         case .idle:
             Text(appVersion)
                 .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(theme.textDim)
 
         case .upToDate:
             HStack(spacing: 6) {
                 Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(TerminalColors.green)
+                    .foregroundColor(theme.terminalGreen)
                 Text("Up to date")
                     .font(.system(size: 11))
-                    .foregroundColor(TerminalColors.green)
+                    .foregroundColor(theme.terminalGreen)
             }
 
         case .checking, .installing:
@@ -214,21 +231,21 @@ struct UpdateRow: View {
         case .found(let version, _):
             HStack(spacing: 6) {
                 Circle()
-                    .fill(TerminalColors.green)
+                    .fill(theme.terminalGreen)
                     .frame(width: 6, height: 6)
                 Text("v\(version)")
                     .font(.system(size: 11))
-                    .foregroundColor(TerminalColors.green)
+                    .foregroundColor(theme.terminalGreen)
             }
 
         case .downloading(let progress):
             HStack(spacing: 8) {
                 ProgressView(value: progress)
                     .frame(width: 60)
-                    .tint(TerminalColors.blue)
+                    .tint(theme.terminalBlue)
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(TerminalColors.blue)
+                    .foregroundColor(theme.terminalBlue)
                     .frame(width: 32, alignment: .trailing)
             }
 
@@ -236,27 +253,27 @@ struct UpdateRow: View {
             HStack(spacing: 8) {
                 ProgressView(value: progress)
                     .frame(width: 60)
-                    .tint(TerminalColors.amber)
+                    .tint(theme.terminalAmber)
                 Text("\(Int(progress * 100))%")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(TerminalColors.amber)
+                    .foregroundColor(theme.terminalAmber)
                     .frame(width: 32, alignment: .trailing)
             }
 
         case .readyToInstall(let version):
             HStack(spacing: 6) {
                 Circle()
-                    .fill(TerminalColors.green)
+                    .fill(theme.terminalGreen)
                     .frame(width: 6, height: 6)
                 Text("v\(version)")
                     .font(.system(size: 11))
-                    .foregroundColor(TerminalColors.green)
+                    .foregroundColor(theme.terminalGreen)
             }
 
         case .error:
             Text("Retry")
                 .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(theme.textDimmer)
         }
     }
 
@@ -288,21 +305,21 @@ struct UpdateRow: View {
     private var iconColor: Color {
         switch updateManager.state {
         case .idle:
-            return .white.opacity(isHovered ? 1.0 : 0.7)
+            return isHovered ? theme.textPrimary : theme.textSecondary
         case .checking:
-            return .white.opacity(0.7)
+            return theme.textSecondary
         case .upToDate:
-            return TerminalColors.green
+            return theme.terminalGreen
         case .found, .readyToInstall:
-            return TerminalColors.green
+            return theme.terminalGreen
         case .downloading:
-            return TerminalColors.blue
+            return theme.terminalBlue
         case .extracting:
-            return TerminalColors.amber
+            return theme.terminalAmber
         case .installing:
-            return TerminalColors.blue
+            return theme.terminalBlue
         case .error:
-            return Color(red: 1.0, green: 0.4, blue: 0.4)
+            return theme.error
         }
     }
 
@@ -332,13 +349,13 @@ struct UpdateRow: View {
     private var labelColor: Color {
         switch updateManager.state {
         case .idle, .upToDate:
-            return .white.opacity(isHovered ? 1.0 : 0.7)
+            return isHovered ? theme.textPrimary : theme.textSecondary
         case .checking, .downloading, .extracting, .installing:
-            return .white.opacity(0.9)
+            return theme.textPrimary
         case .found, .readyToInstall:
-            return TerminalColors.green
+            return theme.terminalGreen
         case .error:
-            return Color(red: 1.0, green: 0.4, blue: 0.4)
+            return theme.error
         }
     }
 
@@ -371,6 +388,7 @@ struct UpdateRow: View {
 
 struct AccessibilityRow: View {
     let isEnabled: Bool
+    @Environment(\.theme) private var theme
 
     @State private var isHovered = false
     @State private var refreshTrigger = false
@@ -396,22 +414,22 @@ struct AccessibilityRow: View {
 
             if isEnabled {
                 Circle()
-                    .fill(TerminalColors.green)
+                    .fill(theme.terminalGreen)
                     .frame(width: 6, height: 6)
 
                 Text("On")
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(theme.textDim)
             } else {
                 Button(action: openAccessibilitySettings) {
                     Text("Enable")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.black)
+                        .foregroundColor(theme.background)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(
                             RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white)
+                                .fill(theme.textPrimary)
                         )
                 }
                 .buttonStyle(.plain)
@@ -421,7 +439,7 @@ struct AccessibilityRow: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isHovered ? Color.white.opacity(0.08) : Color.clear)
+                .fill(isHovered ? theme.backgroundHover : Color.clear)
         )
         .onHover { isHovered = $0 }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -430,7 +448,7 @@ struct AccessibilityRow: View {
     }
 
     private var textColor: Color {
-        .white.opacity(isHovered ? 1.0 : 0.7)
+        isHovered ? theme.textPrimary : theme.textSecondary
     }
 
     private func openAccessibilitySettings() {
@@ -445,6 +463,7 @@ struct MenuRow: View {
     let label: String
     var isDestructive: Bool = false
     let action: () -> Void
+    @Environment(\.theme) private var theme
 
     @State private var isHovered = false
 
@@ -466,7 +485,7 @@ struct MenuRow: View {
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.white.opacity(0.08) : Color.clear)
+                    .fill(isHovered ? theme.backgroundHover : Color.clear)
             )
         }
         .buttonStyle(.plain)
@@ -475,9 +494,9 @@ struct MenuRow: View {
 
     private var textColor: Color {
         if isDestructive {
-            return Color(red: 1.0, green: 0.4, blue: 0.4)
+            return theme.error
         }
-        return .white.opacity(isHovered ? 1.0 : 0.7)
+        return isHovered ? theme.textPrimary : theme.textSecondary
     }
 }
 
@@ -486,6 +505,7 @@ struct MenuToggleRow: View {
     let label: String
     let isOn: Bool
     let action: () -> Void
+    @Environment(\.theme) private var theme
 
     @State private var isHovered = false
 
@@ -504,18 +524,18 @@ struct MenuToggleRow: View {
                 Spacer()
 
                 Circle()
-                    .fill(isOn ? TerminalColors.green : Color.white.opacity(0.3))
+                    .fill(isOn ? theme.terminalGreen : theme.textDimmer)
                     .frame(width: 6, height: 6)
 
                 Text(isOn ? "On" : "Off")
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(theme.textDim)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isHovered ? Color.white.opacity(0.08) : Color.clear)
+                    .fill(isHovered ? theme.backgroundHover : Color.clear)
             )
         }
         .buttonStyle(.plain)
@@ -523,6 +543,6 @@ struct MenuToggleRow: View {
     }
 
     private var textColor: Color {
-        .white.opacity(isHovered ? 1.0 : 0.7)
+        isHovered ? theme.textPrimary : theme.textSecondary
     }
 }

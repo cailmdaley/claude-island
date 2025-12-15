@@ -14,6 +14,7 @@ struct ClaudeCrabIcon: View {
     var animateLegs: Bool = false
 
     @State private var legPhase: Int = 0
+    @Environment(\.theme) private var theme
 
     // Timer for leg animation
     private let legTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
@@ -75,13 +76,13 @@ struct ClaudeCrabIcon: View {
             let leftEye = Path { p in
                 p.addRect(CGRect(x: 12, y: 13, width: 6, height: 6.5))
             }.applying(CGAffineTransform(scaleX: scale, y: scale).translatedBy(x: xOffset / scale, y: 0))
-            context.fill(leftEye, with: .color(.black))
+            context.fill(leftEye, with: .color(theme.background))
 
             // Right eye
             let rightEye = Path { p in
                 p.addRect(CGRect(x: 48, y: 13, width: 6, height: 6.5))
             }.applying(CGAffineTransform(scaleX: scale, y: scale).translatedBy(x: xOffset / scale, y: 0))
-            context.fill(rightEye, with: .color(.black))
+            context.fill(rightEye, with: .color(theme.background))
         }
         .frame(width: size * (66.0 / 52.0), height: size)
         .onReceive(legTimer) { _ in
@@ -96,6 +97,7 @@ struct ClaudeCrabIcon: View {
 struct PermissionIndicatorIcon: View {
     let size: CGFloat
     let color: Color
+    @Environment(\.theme) private var theme
 
     init(size: CGFloat = 14, color: Color = Color(red: 0.11, green: 0.12, blue: 0.13)) {
         self.size = size
@@ -134,6 +136,7 @@ struct PermissionIndicatorIcon: View {
 struct ReadyForInputIndicatorIcon: View {
     let size: CGFloat
     let color: Color
+    @Environment(\.theme) private var theme
 
     init(size: CGFloat = 14, color: Color = TerminalColors.green) {
         self.size = size

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ScreenPickerRow: View {
     @ObservedObject var screenSelector: ScreenSelector
+    @Environment(\.theme) private var theme
     @State private var isHovered = false
 
     private var isExpanded: Bool {
@@ -41,18 +42,18 @@ struct ScreenPickerRow: View {
 
                     Text(currentSelectionLabel)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                         .lineLimit(1)
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(isHovered ? Color.white.opacity(0.08) : Color.clear)
+                        .fill(isHovered ? theme.backgroundHover : Color.clear)
                 )
             }
             .buttonStyle(.plain)
@@ -105,7 +106,7 @@ struct ScreenPickerRow: View {
     }
 
     private var textColor: Color {
-        .white.opacity(isHovered ? 1.0 : 0.7)
+        isHovered ? theme.textPrimary : theme.textSecondary
     }
 
     private func screenSublabel(for screen: NSScreen) -> String? {
@@ -144,24 +145,25 @@ private struct ScreenOptionRow: View {
     let isSelected: Bool
     let action: () -> Void
 
+    @Environment(\.theme) private var theme
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(isSelected ? TerminalColors.green : Color.white.opacity(0.2))
+                    .fill(isSelected ? theme.terminalGreen : theme.textDimmer)
                     .frame(width: 6, height: 6)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(label)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(isHovered ? 1.0 : 0.7))
+                        .foregroundColor(isHovered ? theme.textPrimary : theme.textSecondary)
 
                     if let sublabel = sublabel {
                         Text(sublabel)
                             .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.4))
+                            .foregroundColor(theme.textDim)
                     }
                 }
 
@@ -170,14 +172,14 @@ private struct ScreenOptionRow: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(TerminalColors.green)
+                        .foregroundColor(theme.terminalGreen)
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(isHovered ? Color.white.opacity(0.06) : Color.clear)
+                    .fill(isHovered ? theme.backgroundHover : Color.clear)
             )
         }
         .buttonStyle(.plain)

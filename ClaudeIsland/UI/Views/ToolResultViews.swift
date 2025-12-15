@@ -11,6 +11,7 @@ import SwiftUI
 
 struct ToolResultContent: View {
     let tool: ToolCallItem
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let structured = tool.structuredResult {
@@ -94,6 +95,7 @@ struct EditInputDiffView: View {
 
 struct ReadResultContent: View {
     let result: ReadResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if !result.content.isEmpty {
@@ -113,6 +115,7 @@ struct ReadResultContent: View {
 struct EditResultContent: View {
     let result: EditResult
     var toolInput: [String: String] = [:]
+    @Environment(\.theme) private var theme
 
     /// Get old string - prefer result, fallback to input
     private var oldString: String {
@@ -140,7 +143,7 @@ struct EditResultContent: View {
             if result.userModified {
                 Text("(User modified)")
                     .font(.system(size: 10))
-                    .foregroundColor(.orange.opacity(0.7))
+                    .foregroundColor(theme.warning)
             }
         }
     }
@@ -150,6 +153,7 @@ struct EditResultContent: View {
 
 struct WriteResultContent: View {
     let result: WriteResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -157,10 +161,10 @@ struct WriteResultContent: View {
             HStack(spacing: 4) {
                 Text(result.type == .create ? "Created" : "Wrote")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
                 Text(result.filename)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(theme.textSecondary)
             }
 
             // Content preview for new files
@@ -177,6 +181,7 @@ struct WriteResultContent: View {
 
 struct BashResultContent: View {
     let result: BashResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -188,14 +193,14 @@ struct BashResultContent: View {
                     Text("Background task: \(bgId)")
                         .font(.system(size: 10, design: .monospaced))
                 }
-                .foregroundColor(.blue.opacity(0.7))
+                .foregroundColor(theme.terminalBlue)
             }
 
             // Return code interpretation
             if let interpretation = result.returnCodeInterpretation {
                 Text(interpretation)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
             }
 
             // Stdout
@@ -208,10 +213,10 @@ struct BashResultContent: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("stderr:")
                         .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.red.opacity(0.7))
+                        .foregroundColor(theme.error)
                     Text(result.stderr)
                         .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.red.opacity(0.8))
+                        .foregroundColor(theme.error.opacity(0.9))
                         .lineLimit(10)
                 }
             }
@@ -220,7 +225,7 @@ struct BashResultContent: View {
             if !result.hasOutput && result.backgroundTaskId == nil && result.returnCodeInterpretation == nil {
                 Text("(No content)")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
             }
         }
     }
@@ -230,6 +235,7 @@ struct BashResultContent: View {
 
 struct GrepResultContent: View {
     let result: GrepResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -239,7 +245,7 @@ struct GrepResultContent: View {
                 if result.filenames.isEmpty {
                     Text("No matches found")
                         .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(theme.textDimmer)
                 } else {
                     FileListView(files: result.filenames, limit: 10)
                 }
@@ -251,13 +257,13 @@ struct GrepResultContent: View {
                 } else {
                     Text("No matches found")
                         .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(theme.textDimmer)
                 }
 
             case .count:
                 Text("\(result.numFiles) files with matches")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
             }
         }
     }
@@ -267,20 +273,21 @@ struct GrepResultContent: View {
 
 struct GlobResultContent: View {
     let result: GlobResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if result.filenames.isEmpty {
                 Text("No files found")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
             } else {
                 FileListView(files: result.filenames, limit: 10)
 
                 if result.truncated {
                     Text("... and more (truncated)")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(theme.textDimmer)
                 }
             }
         }
@@ -291,6 +298,7 @@ struct GlobResultContent: View {
 
 struct TodoWriteResultContent: View {
     let result: TodoWriteResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -304,7 +312,7 @@ struct TodoWriteResultContent: View {
 
                     Text(todo.content)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(todo.status == "completed" ? 0.4 : 0.7))
+                        .foregroundColor(todo.status == "completed" ? theme.textDim : theme.textSecondary)
                         .strikethrough(todo.status == "completed")
                         .lineLimit(2)
                 }
@@ -322,9 +330,9 @@ struct TodoWriteResultContent: View {
 
     private func todoColor(for status: String) -> Color {
         switch status {
-        case "completed": return .green.opacity(0.7)
-        case "in_progress": return .orange.opacity(0.7)
-        default: return .white.opacity(0.4)
+        case "completed": return theme.success
+        case "in_progress": return theme.warning
+        default: return theme.textDim
         }
     }
 }
@@ -333,6 +341,7 @@ struct TodoWriteResultContent: View {
 
 struct TaskResultContent: View {
     let result: TaskResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -345,13 +354,13 @@ struct TaskResultContent: View {
                 if let duration = result.totalDurationMs {
                     Text("\(formatDuration(duration))")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                 }
 
                 if let tools = result.totalToolUseCount {
                     Text("\(tools) tools")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                 }
             }
 
@@ -359,7 +368,7 @@ struct TaskResultContent: View {
             if !result.content.isEmpty {
                 Text(result.content.prefix(200) + (result.content.count > 200 ? "..." : ""))
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.textSecondary)
                     .lineLimit(5)
             }
         }
@@ -367,10 +376,10 @@ struct TaskResultContent: View {
 
     private var statusColor: Color {
         switch result.status {
-        case "completed": return .green.opacity(0.7)
-        case "in_progress": return .orange.opacity(0.7)
-        case "failed", "error": return .red.opacity(0.7)
-        default: return .white.opacity(0.5)
+        case "completed": return theme.success
+        case "in_progress": return theme.warning
+        case "failed", "error": return theme.error
+        default: return theme.textDim
         }
     }
 
@@ -388,6 +397,7 @@ struct TaskResultContent: View {
 
 struct WebFetchResultContent: View {
     let result: WebFetchResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -395,11 +405,11 @@ struct WebFetchResultContent: View {
             HStack(spacing: 6) {
                 Text("\(result.code)")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(result.code < 400 ? .green.opacity(0.7) : .red.opacity(0.7))
+                    .foregroundColor(result.code < 400 ? theme.success : theme.error)
 
                 Text(truncateUrl(result.url))
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
                     .lineLimit(1)
             }
 
@@ -407,7 +417,7 @@ struct WebFetchResultContent: View {
             if !result.result.isEmpty {
                 Text(result.result.prefix(300) + (result.result.count > 300 ? "..." : ""))
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(theme.textSecondary)
                     .lineLimit(8)
             }
         }
@@ -425,25 +435,26 @@ struct WebFetchResultContent: View {
 
 struct WebSearchResultContent: View {
     let result: WebSearchResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if result.results.isEmpty {
                 Text("No results found")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
             } else {
                 ForEach(Array(result.results.prefix(5).enumerated()), id: \.offset) { _, item in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.blue.opacity(0.8))
+                            .foregroundColor(theme.terminalBlue)
                             .lineLimit(1)
 
                         if !item.snippet.isEmpty {
                             Text(item.snippet)
                                 .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(theme.textDim)
                                 .lineLimit(2)
                         }
                     }
@@ -452,7 +463,7 @@ struct WebSearchResultContent: View {
                 if result.results.count > 5 {
                     Text("... and \(result.results.count - 5) more results")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(theme.textDimmer)
                 }
             }
         }
@@ -463,6 +474,7 @@ struct WebSearchResultContent: View {
 
 struct AskUserQuestionResultContent: View {
     let result: AskUserQuestionResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -471,7 +483,7 @@ struct AskUserQuestionResultContent: View {
                     // Question
                     Text(question.question)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(theme.textSecondary)
 
                     // Answer
                     if let answer = result.answers["\(index)"] {
@@ -481,7 +493,7 @@ struct AskUserQuestionResultContent: View {
                             Text(answer)
                                 .font(.system(size: 11, weight: .medium))
                         }
-                        .foregroundColor(.green.opacity(0.7))
+                        .foregroundColor(theme.success)
                     }
                 }
             }
@@ -493,6 +505,7 @@ struct AskUserQuestionResultContent: View {
 
 struct BashOutputResultContent: View {
     let result: BashOutputResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -500,12 +513,12 @@ struct BashOutputResultContent: View {
             HStack(spacing: 6) {
                 Text("Status: \(result.status)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
 
                 if let exitCode = result.exitCode {
                     Text("Exit: \(exitCode)")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(exitCode == 0 ? .green.opacity(0.6) : .red.opacity(0.6))
+                        .foregroundColor(exitCode == 0 ? theme.success : theme.error)
                 }
             }
 
@@ -517,7 +530,7 @@ struct BashOutputResultContent: View {
             if !result.stderr.isEmpty {
                 Text(result.stderr)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.red.opacity(0.7))
+                    .foregroundColor(theme.error)
                     .lineLimit(5)
             }
         }
@@ -528,16 +541,17 @@ struct BashOutputResultContent: View {
 
 struct KillShellResultContent: View {
     let result: KillShellResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "xmark.circle")
                 .font(.system(size: 11))
-                .foregroundColor(.red.opacity(0.6))
+                .foregroundColor(theme.error)
 
             Text(result.message.isEmpty ? "Shell \(result.shellId) terminated" : result.message)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(theme.textDim)
         }
     }
 }
@@ -546,6 +560,7 @@ struct KillShellResultContent: View {
 
 struct ExitPlanModeResultContent: View {
     let result: ExitPlanModeResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -556,13 +571,13 @@ struct ExitPlanModeResultContent: View {
                     Text(URL(fileURLWithPath: path).lastPathComponent)
                         .font(.system(size: 11, design: .monospaced))
                 }
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(theme.textSecondary)
             }
 
             if let plan = result.plan, !plan.isEmpty {
                 Text(plan.prefix(200) + (plan.count > 200 ? "..." : ""))
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
                     .lineLimit(6)
             }
         }
@@ -573,6 +588,7 @@ struct ExitPlanModeResultContent: View {
 
 struct MCPResultContent: View {
     let result: MCPResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -583,17 +599,17 @@ struct MCPResultContent: View {
                 Text("\(MCPToolFormatter.toTitleCase(result.serverName)) - \(MCPToolFormatter.toTitleCase(result.toolName))")
                     .font(.system(size: 10, design: .monospaced))
             }
-            .foregroundColor(.purple.opacity(0.7))
+            .foregroundColor(theme.terminalMagenta)
 
             // Raw result (formatted as key-value pairs)
             ForEach(Array(result.rawResult.prefix(5)), id: \.key) { key, value in
                 HStack(alignment: .top, spacing: 4) {
                     Text("\(key):")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                     Text("\(String(describing: value).prefix(100))")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(theme.textSecondary)
                         .lineLimit(2)
                 }
             }
@@ -605,6 +621,7 @@ struct MCPResultContent: View {
 
 struct GenericResultContent: View {
     let result: GenericResult
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let content = result.rawContent, !content.isEmpty {
@@ -612,18 +629,19 @@ struct GenericResultContent: View {
         } else {
             Text("Completed")
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundColor(.white.opacity(0.3))
+                .foregroundColor(theme.textDimmer)
         }
     }
 }
 
 struct GenericTextContent: View {
     let text: String
+    @Environment(\.theme) private var theme
 
     var body: some View {
         Text(text)
             .font(.system(size: 11, design: .monospaced))
-            .foregroundColor(.white.opacity(0.5))
+            .foregroundColor(theme.textDim)
             .lineLimit(15)
     }
 }
@@ -637,6 +655,7 @@ struct FileCodeView: View {
     let startLine: Int
     let totalLines: Int
     let maxLines: Int
+    @Environment(\.theme) private var theme
 
     private var lines: [String] {
         content.components(separatedBy: "\n")
@@ -660,26 +679,26 @@ struct FileCodeView: View {
             HStack(spacing: 6) {
                 Image(systemName: "doc.text")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.4))
+                    .foregroundColor(theme.textDim)
                 Text(filename)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
-            .background(Color.white.opacity(0.06))
+            .background(theme.backgroundElevated)
             .clipShape(RoundedCorner(radius: 6, corners: [.topLeft, .topRight]))
 
             // Top overflow indicator
             if hasLinesBefore {
                 Text("...")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.06))
+                    .background(theme.backgroundElevated)
             }
 
             // Code lines with line numbers
@@ -697,11 +716,11 @@ struct FileCodeView: View {
             if hasMoreAfter {
                 Text("... (\(lines.count - maxLines) more lines)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.06))
+                    .background(theme.backgroundElevated)
                     .clipShape(RoundedCorner(radius: 6, corners: [.bottomLeft, .bottomRight]))
             }
         }
@@ -711,26 +730,27 @@ struct FileCodeView: View {
         let line: String
         let lineNumber: Int
         let isLast: Bool
+        @Environment(\.theme) private var theme
 
         var body: some View {
             HStack(spacing: 0) {
                 // Line number
                 Text("\(lineNumber)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .frame(width: 28, alignment: .trailing)
                     .padding(.trailing, 8)
 
                 // Line content
                 Text(line.isEmpty ? " " : line)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.7))
+                    .foregroundColor(theme.textSecondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 4)
             .padding(.vertical, 2)
-            .background(Color.white.opacity(0.06))
+            .background(theme.backgroundElevated)
             .clipShape(RoundedCorner(radius: 6, corners: isLast ? [.bottomLeft, .bottomRight] : []))
         }
     }
@@ -739,6 +759,7 @@ struct FileCodeView: View {
 struct CodePreview: View {
     let content: String
     let maxLines: Int
+    @Environment(\.theme) private var theme
 
     var body: some View {
         let lines = content.components(separatedBy: "\n")
@@ -749,13 +770,13 @@ struct CodePreview: View {
             ForEach(Array(displayLines.enumerated()), id: \.offset) { _, line in
                 Text(line.isEmpty ? " " : line)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(theme.textDim)
             }
 
             if hasMore {
                 Text("... (\(lines.count - maxLines) more lines)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .padding(.top, 2)
             }
         }
@@ -765,6 +786,7 @@ struct CodePreview: View {
 struct FileListView: View {
     let files: [String]
     let limit: Int
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -772,10 +794,10 @@ struct FileListView: View {
                 HStack(spacing: 4) {
                     Image(systemName: "doc")
                         .font(.system(size: 9))
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(theme.textDimmer)
                     Text(URL(fileURLWithPath: file).lastPathComponent)
                         .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(theme.textSecondary)
                         .lineLimit(1)
                 }
             }
@@ -783,7 +805,7 @@ struct FileListView: View {
             if files.count > limit {
                 Text("... and \(files.count - limit) more files")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
             }
         }
     }
@@ -791,6 +813,7 @@ struct FileListView: View {
 
 struct DiffView: View {
     let patches: [PatchHunk]
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -799,7 +822,7 @@ struct DiffView: View {
                     // Hunk header
                     Text("@@ -\(patch.oldStart),\(patch.oldLines) +\(patch.newStart),\(patch.newLines) @@")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.cyan.opacity(0.7))
+                        .foregroundColor(theme.terminalCyan)
 
                     // Lines
                     ForEach(Array(patch.lines.prefix(10).enumerated()), id: \.offset) { _, line in
@@ -809,7 +832,7 @@ struct DiffView: View {
                     if patch.lines.count > 10 {
                         Text("... (\(patch.lines.count - 10) more lines)")
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundColor(.white.opacity(0.3))
+                            .foregroundColor(theme.textDimmer)
                     }
                 }
             }
@@ -817,7 +840,7 @@ struct DiffView: View {
             if patches.count > 3 {
                 Text("... and \(patches.count - 3) more hunks")
                     .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
             }
         }
     }
@@ -825,6 +848,7 @@ struct DiffView: View {
 
 struct DiffLineView: View {
     let line: String
+    @Environment(\.theme) private var theme
 
     private var lineType: DiffLineType {
         if line.hasPrefix("+") {
@@ -838,11 +862,11 @@ struct DiffLineView: View {
     var body: some View {
         Text(line)
             .font(.system(size: 11, design: .monospaced))
-            .foregroundColor(lineType.textColor)
+            .foregroundColor(lineType.textColor(for: theme))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)
             .padding(.vertical, 1)
-            .background(lineType.backgroundColor)
+            .background(lineType.backgroundColor(for: theme))
     }
 }
 
@@ -851,18 +875,18 @@ private enum DiffLineType {
     case removed
     case context
 
-    var textColor: Color {
+    func textColor(for theme: Theme) -> Color {
         switch self {
-        case .added: return Color(red: 0.4, green: 0.8, blue: 0.4)
-        case .removed: return Color(red: 0.9, green: 0.5, blue: 0.5)
-        case .context: return .white.opacity(0.5)
+        case .added: return theme.diffAdded
+        case .removed: return theme.diffRemoved
+        case .context: return theme.textDim
         }
     }
 
-    var backgroundColor: Color {
+    func backgroundColor(for theme: Theme) -> Color {
         switch self {
-        case .added: return Color(red: 0.2, green: 0.4, blue: 0.2).opacity(0.3)
-        case .removed: return Color(red: 0.4, green: 0.2, blue: 0.2).opacity(0.3)
+        case .added: return theme.diffAdded.opacity(0.2)
+        case .removed: return theme.diffRemoved.opacity(0.2)
         case .context: return .clear
         }
     }
@@ -872,6 +896,7 @@ struct SimpleDiffView: View {
     let oldString: String
     let newString: String
     var filename: String? = nil
+    @Environment(\.theme) private var theme
 
     /// Compute diff using LCS algorithm
     private var diffLines: [DiffLine] {
@@ -968,15 +993,15 @@ struct SimpleDiffView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(theme.textDim)
                     Text(name)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(theme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
-                .background(Color.white.opacity(0.06))
+                .background(theme.backgroundElevated)
                 .clipShape(RoundedCorner(radius: 6, corners: [.topLeft, .topRight] as RoundedCorner.RectCorner))
             }
 
@@ -984,11 +1009,11 @@ struct SimpleDiffView: View {
             if hasLinesBefore {
                 Text("...")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.06))
+                    .background(theme.backgroundElevated)
                     .clipShape(RoundedCorner(radius: 6, corners: filename == nil ? [.topLeft, .topRight] as RoundedCorner.RectCorner : [] as RoundedCorner.RectCorner))
             }
 
@@ -1009,11 +1034,11 @@ struct SimpleDiffView: View {
             if hasMoreChanges {
                 Text("...")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.3))
+                    .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.06))
+                    .background(theme.backgroundElevated)
                     .clipShape(RoundedCorner(radius: 6, corners: [.bottomLeft, .bottomRight] as RoundedCorner.RectCorner))
             }
         }
@@ -1031,6 +1056,7 @@ struct SimpleDiffView: View {
         let lineNumber: Int
         let isFirst: Bool
         let isLast: Bool
+        @Environment(\.theme) private var theme
 
         private var corners: RoundedCorner.RectCorner {
             if isFirst && isLast {
@@ -1048,26 +1074,26 @@ struct SimpleDiffView: View {
                 // Line number
                 Text("\(lineNumber)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundColor(type.textColor.opacity(0.6))
+                    .foregroundColor(type.textColor(for: theme).opacity(0.6))
                     .frame(width: 28, alignment: .trailing)
                     .padding(.trailing, 4)
 
                 // +/- indicator
                 Text(type == .added ? "+" : "-")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(type.textColor)
+                    .foregroundColor(type.textColor(for: theme))
                     .frame(width: 14)
 
                 // Line content
                 Text(line.isEmpty ? " " : line)
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(type.textColor)
+                    .foregroundColor(type.textColor(for: theme))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.trailing, 4)
             .padding(.vertical, 2)
-            .background(type.backgroundColor)
+            .background(type.backgroundColor(for: theme))
             .clipShape(RoundedCorner(radius: 6, corners: corners))
         }
     }

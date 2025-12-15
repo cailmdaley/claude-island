@@ -78,9 +78,9 @@ struct LightTheme: Theme {
     // Foreground: #575279 (muted purple-gray)
     // Accent: #b4637a (rose)
 
-    let background = Color(red: 0.98, green: 0.96, blue: 0.93)  // #faf4ed
-    let backgroundElevated = Color(red: 0.95, green: 0.92, blue: 0.88)  // slightly darker
-    let backgroundHover = Color(red: 0.92, green: 0.89, blue: 0.85)
+    let background = Color(red: 0.94, green: 0.91, blue: 0.87)  // darker cream
+    let backgroundElevated = Color(red: 0.94, green: 0.91, blue: 0.87)  // same as bg for uniformity
+    let backgroundHover = Color(red: 0.91, green: 0.88, blue: 0.84)  // very subtle
 
     let textPrimary = Color(red: 0.34, green: 0.32, blue: 0.47)  // #575279
     let textSecondary = Color(red: 0.34, green: 0.32, blue: 0.47).opacity(0.85)
@@ -92,9 +92,9 @@ struct LightTheme: Theme {
     let warning = Color(red: 0.92, green: 0.60, blue: 0.28)  // #ea9d34 gold
     let error = Color(red: 0.71, green: 0.39, blue: 0.48)  // #b4637a rose (same as accent for dawnfox)
 
-    let codeBackground = Color(red: 0.95, green: 0.92, blue: 0.88)
-    let diffAdded = Color(red: 0.85, green: 0.93, blue: 0.88)  // soft green tint
-    let diffRemoved = Color(red: 0.95, green: 0.88, blue: 0.88)  // soft red tint
+    let codeBackground = Color(red: 0.90, green: 0.87, blue: 0.83)
+    let diffAdded = Color(red: 0.13, green: 0.45, blue: 0.27)  // dark green for text
+    let diffRemoved = Color(red: 0.65, green: 0.20, blue: 0.20)  // dark red for text
 
     // Terminal colors adjusted for light background
     let terminalGreen = Color(red: 0.16, green: 0.51, blue: 0.42)  // pine
