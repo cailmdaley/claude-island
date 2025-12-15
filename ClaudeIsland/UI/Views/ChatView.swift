@@ -399,6 +399,7 @@ struct ChatView: View {
                 }
                 .padding(.top, 20)
                 .padding(.bottom, 20)
+                .textSelection(.enabled)
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isProcessing)
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: history.count)
             }

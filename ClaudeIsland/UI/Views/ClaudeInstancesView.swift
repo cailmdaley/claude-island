@@ -85,6 +85,7 @@ struct ClaudeInstancesView: View {
                     }
                 }
                 .padding(.vertical, 4)
+                .textSelection(.enabled)
             }
             .scrollBounceBehavior(.basedOnSize)
             .onAppear {

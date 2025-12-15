@@ -111,6 +111,7 @@ struct NotchMenuView: View {
                 restartApp()
             }
         }
+        .textSelection(.enabled)
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
