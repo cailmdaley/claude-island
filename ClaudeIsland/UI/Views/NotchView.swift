@@ -197,6 +197,7 @@ struct NotchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .environment(\.theme, themeManager.currentTheme)
         .preferredColorScheme(themeManager.preference == .light ? .light : .dark)
+        .focusable()
         .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return, .escape]) { keyPress in
             handleKeyPress(keyPress.key)
         }
