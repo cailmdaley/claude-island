@@ -252,11 +252,16 @@ struct NotchView: View {
                             removal: .opacity.animation(.easeOut(duration: 0.15))
                         )
                     )
+                    .onTapGesture(count: 2) {
+                        // Double-click to toggle expanded size (chat only)
+                        if case .chat = viewModel.contentType {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                AppSettings.chatViewExpanded.toggle()
+                                viewModel.objectWillChange.send()
+                            }
+                        }
+                    }
 
-                // Resize handle for chat view
-                if case .chat = viewModel.contentType {
-                    ResizeHandle(viewModel: viewModel)
-                }
             }
         }
     }
@@ -570,48 +575,3 @@ struct NotchView: View {
     }
 }
 
-// MARK: - Resize Handle
-
-struct ResizeHandle: View {
-    @ObservedObject var viewModel: NotchViewModel
-    @State private var isDragging = false
-    @State private var dragStart: CGFloat = 0
-    @State private var isHovering = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            Rectangle()
-                .fill(Color.white.opacity(isDragging || isHovering ? 0.4 : 0.15))
-                .frame(width: 80, height: 6)
-                .cornerRadius(3)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: 40)
-        .background(Color.black.opacity(0.001))  // Invisible but interactive
-        .contentShape(Rectangle())
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    if !isDragging {
-                        isDragging = true
-                        dragStart = AppSettings.chatViewHeight
-                    }
-                    let newHeight = dragStart + value.translation.height
-                    AppSettings.chatViewHeight = max(300, min(1000, newHeight))
-                    viewModel.objectWillChange.send()
-                }
-                .onEnded { _ in
-                    isDragging = false
-                }
-        )
-        .onHover { hovering in
-            isHovering = hovering
-            if hovering {
-                NSCursor.resizeUpDown.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-    }
-}

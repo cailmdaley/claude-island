@@ -77,14 +77,19 @@ class NotchViewModel: ObservableObject {
     var openedSize: CGSize {
         switch contentType {
         case .chat:
-            // Terminal-width chat view (88 chars @ 7.5px/char = 660px)
+            // Terminal-width chat view (85 chars @ 7.5px/char = 637.5px)
             let charWidth: CGFloat = 7.5  // Google Sans Mono size 13
-            let terminalColumns: CGFloat = 88
+            let terminalColumns: CGFloat = 85
             let calculatedWidth = terminalColumns * charWidth
+
+            // Height: half screen by default, full screen when expanded
+            let contentHeight = AppSettings.chatViewExpanded
+                ? screenRect.height  // Full screen height
+                : screenRect.height * 0.5   // Half screen by default
 
             return CGSize(
                 width: min(screenRect.width * 0.9, calculatedWidth),
-                height: AppSettings.chatViewHeight
+                height: contentHeight
             )
         case .menu:
             // Menu size - account for all rows (~40px each) plus dividers
@@ -95,9 +100,9 @@ class NotchViewModel: ObservableObject {
                 height: 520 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
             )
         case .instances:
-            // Terminal-width instances view (88 chars @ 7.5px/char = 660px)
+            // Terminal-width instances view (85 chars @ 7.5px/char = 637.5px)
             let charWidth: CGFloat = 7.5
-            let terminalColumns: CGFloat = 88
+            let terminalColumns: CGFloat = 85
             let calculatedWidth = terminalColumns * charWidth
 
             // Dynamic height based on session count

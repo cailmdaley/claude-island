@@ -515,6 +515,7 @@ struct ChatView: View {
                     .padding(.vertical, 10)
                     .frame(minHeight: 36, maxHeight: 120)
                     .fixedSize(horizontal: false, vertical: true)
+                    .id("chat-input-\(sessionId)")  // Stable identity through view updates
                     .onKeyPress(.return, phases: .down) { keyPress in
                         // Shift+Enter = insert newline (handled by TextEditor)
                         // Enter alone = send message

@@ -38,7 +38,7 @@ enum AppSettings {
 
     private enum Keys {
         static let notificationSound = "notificationSound"
-        static let chatViewHeight = "chatViewHeight"
+        static let chatViewExpanded = "chatViewExpanded"
     }
 
     // MARK: - Notification Sound
@@ -57,16 +57,15 @@ enum AppSettings {
         }
     }
 
-    // MARK: - Chat View Height
+    // MARK: - Chat View Expanded
 
-    /// User-customizable height for chat view (default 580)
-    static var chatViewHeight: CGFloat {
+    /// Whether chat view is expanded to full screen (default false = half screen)
+    static var chatViewExpanded: Bool {
         get {
-            let stored = defaults.double(forKey: Keys.chatViewHeight)
-            return stored > 0 ? CGFloat(stored) : 580
+            defaults.bool(forKey: Keys.chatViewExpanded)
         }
         set {
-            defaults.set(Double(newValue), forKey: Keys.chatViewHeight)
+            defaults.set(newValue, forKey: Keys.chatViewExpanded)
         }
     }
 }
