@@ -208,6 +208,11 @@ struct ChatView: View {
                     isInputFocused = true
                 }
             }
+
+            // Check yabai availability for terminal focus button
+            Task {
+                isYabaiAvailable = await WindowFinder.shared.isYabaiAvailable()
+            }
         }
     }
 
@@ -216,6 +221,10 @@ struct ChatView: View {
     @State private var isHeaderHovered = false
 
     @State private var isRefreshHovered = false
+
+    @State private var isFocusHovered = false
+
+    @State private var isYabaiAvailable = false
 
     private var chatHeader: some View {
         HStack(spacing: 0) {
@@ -270,6 +279,25 @@ struct ChatView: View {
                 .buttonStyle(.plain)
                 .onHover { isRefreshHovered = $0 }
                 .disabled(isRefreshing)
+                .padding(.trailing, 8)
+            }
+
+            // Terminal focus button (eye icon)
+            if session.isInTmux && isYabaiAvailable {
+                Button {
+                    focusTerminal()
+                } label: {
+                    Image(systemName: "eye")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(theme.textDim.opacity(isFocusHovered ? 0.9 : 0.5))
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(isFocusHovered ? theme.backgroundHover : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+                .onHover { isFocusHovered = $0 }
                 .padding(.trailing, 8)
             }
         }
