@@ -468,7 +468,8 @@ struct ChatView: View {
                     Text(canSendMessages ? "Message Claude..." : "Open Claude Code in tmux to enable messaging")
                         .font(.system(size: 13))
                         .foregroundColor(theme.textDim)
-                        .padding(.horizontal, 14)
+                        .padding(.leading, 19)  // 14 + 5 for TextEditor's internal inset
+                        .padding(.trailing, 14)
                         .padding(.vertical, 10)
                 }
 
