@@ -1104,7 +1104,10 @@ struct SubagentToolsList: View {
                         Text("\(isExpanded ? "Hide" : "Show") \(hiddenCount) more tool\(hiddenCount == 1 ? "" : "s")")
                             .font(.system(size: 10))
                             .foregroundColor(theme.textDim)
+
+                        Spacer()
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
