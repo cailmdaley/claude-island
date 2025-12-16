@@ -959,6 +959,16 @@ struct ToolCallView: View {
                 }
             }
 
+            // Inline command/input display for certain tools
+            if let inlineCommand = getInlineCommand() {
+                Text(inlineCommand)
+                    .font(.custom("Google Sans Mono", size: 11))
+                    .foregroundColor(theme.textSecondary)
+                    .lineLimit(3)
+                    .padding(.leading, 12)
+                    .padding(.top, 2)
+            }
+
             // Subagent tools list (for Task tools)
             if tool.name == "Task" && !tool.subagentTools.isEmpty {
                 SubagentToolsList(tools: tool.subagentTools)
@@ -1000,6 +1010,45 @@ struct ToolCallView: View {
         }
         .animation(.easeOut(duration: 0.15), value: isHovering)
         .animation(.spring(response: 0.25, dampingFraction: 0.8), value: isExpanded)
+    }
+
+    /// Extract command/input to display inline for certain tool types
+    private func getInlineCommand() -> String? {
+        switch tool.name {
+        case "Bash":
+            return tool.input["command"]
+        case "Grep":
+            if let pattern = tool.input["pattern"] {
+                return "pattern: \(pattern)"
+            }
+        case "Glob":
+            if let pattern = tool.input["pattern"] {
+                return "pattern: \(pattern)"
+            }
+        case "Read":
+            if let path = tool.input["file_path"] {
+                return path
+            }
+        case "Write":
+            if let path = tool.input["file_path"] {
+                return path
+            }
+        case "Edit":
+            if let path = tool.input["file_path"] {
+                return path
+            }
+        case "WebSearch":
+            if let query = tool.input["query"] {
+                return query
+            }
+        case "WebFetch":
+            if let url = tool.input["url"] {
+                return url
+            }
+        default:
+            break
+        }
+        return nil
     }
 
     private func startPulsing() {
