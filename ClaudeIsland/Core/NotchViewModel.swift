@@ -55,6 +55,9 @@ class NotchViewModel: ObservableObject {
     /// Cached sessions for keyboard navigation (synced from view)
     private(set) var cachedSessions: [SessionState] = []
 
+    /// Number of sessions (for dynamic height calculation)
+    @Published private(set) var sessionCount: Int = 0
+
     // MARK: - Dependencies
 
     private let screenSelector = ScreenSelector.shared
@@ -88,9 +91,26 @@ class NotchViewModel: ObservableObject {
                 height: 520 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
             )
         case .instances:
+            // Dynamic height based on session count
+            // Each row: ~60px (including padding), spacing: 2px between rows
+            let baseHeight: CGFloat = 60
+            let spacing: CGFloat = 2
+            let minHeight: CGFloat = 150
+            let maxHeight: CGFloat = 500
+
+            let calculatedHeight: CGFloat
+            if sessionCount == 0 {
+                // Empty state
+                calculatedHeight = minHeight
+            } else {
+                // Height = (rows * baseHeight) + (gaps * spacing)
+                let contentHeight = CGFloat(sessionCount) * baseHeight + CGFloat(sessionCount - 1) * spacing
+                calculatedHeight = contentHeight
+            }
+
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
-                height: 320
+                height: min(max(calculatedHeight, minHeight), maxHeight)
             )
         }
     }
@@ -312,6 +332,7 @@ class NotchViewModel: ObservableObject {
     /// Update cached sessions from the view (call when sessions change)
     func updateSessions(_ sessions: [SessionState]) {
         cachedSessions = sessions
+        sessionCount = sessions.count
 
         // Auto-select first session if no selection exists
         if selectedSessionIndex == nil && !sessions.isEmpty {
