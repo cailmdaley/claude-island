@@ -283,7 +283,8 @@ struct ChatView: View {
             }
 
             // Terminal focus button (eye icon)
-            if session.isInTmux && isYabaiAvailable {
+            // Show for local sessions with yabai, or any remote session
+            if (session.isInTmux && isYabaiAvailable) || session.isRemote {
                 Button {
                     focusTerminal()
                 } label: {
@@ -621,6 +622,13 @@ struct ChatView: View {
 
     private func focusTerminal() {
         Task {
+            // For remote sessions, just activate the terminal app
+            if session.isRemote {
+                _ = await YabaiController.shared.activateTerminalApp()
+                return
+            }
+
+            // For local sessions, use yabai to focus specific window
             if let pid = session.pid {
                 _ = await YabaiController.shared.focusWindow(forClaudePid: pid)
             } else {

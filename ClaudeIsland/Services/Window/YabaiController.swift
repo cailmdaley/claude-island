@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 
 /// Controller for yabai window management
 actor YabaiController {
@@ -140,6 +141,24 @@ actor YabaiController {
             }
         } catch {
             return false
+        }
+
+        return false
+    }
+
+    /// Activate the terminal application (fallback when yabai unavailable or remote session)
+    @MainActor
+    func activateTerminalApp() async -> Bool {
+        let terminalApps = ["Ghostty", "iTerm", "Terminal", "Alacritty", "kitty", "WezTerm"]
+
+        // Find which terminal is running
+        let workspace = NSWorkspace.shared
+        let runningApps = workspace.runningApplications
+
+        for terminalName in terminalApps {
+            if let app = runningApps.first(where: { $0.localizedName?.contains(terminalName) == true || $0.bundleIdentifier?.contains(terminalName.lowercased()) == true }) {
+                return app.activate(options: [])
+            }
         }
 
         return false

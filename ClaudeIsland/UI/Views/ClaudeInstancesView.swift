@@ -108,9 +108,15 @@ struct ClaudeInstancesView: View {
     // MARK: - Actions
 
     private func focusSession(_ session: SessionState) {
-        guard session.isInTmux else { return }
-
         Task {
+            // For remote sessions, just activate the terminal app
+            if session.isRemote {
+                _ = await YabaiController.shared.activateTerminalApp()
+                return
+            }
+
+            // For local sessions, use yabai to focus specific window
+            guard session.isInTmux else { return }
             if let pid = session.pid {
                 _ = await YabaiController.shared.focusWindow(forClaudePid: pid)
             } else {
@@ -295,7 +301,8 @@ struct InstanceRow: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
                 // Focus icon only (chat via single-click, archive via chat view)
-                if session.isInTmux && isYabaiAvailable {
+                // Show for local sessions with yabai, or any remote session
+                if (session.isInTmux && isYabaiAvailable) || session.isRemote {
                     IconButton(icon: "eye") {
                         onFocus()
                     }
