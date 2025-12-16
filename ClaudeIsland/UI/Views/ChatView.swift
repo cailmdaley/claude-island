@@ -1069,6 +1069,7 @@ struct ToolCallView: View {
 struct SubagentToolsList: View {
     let tools: [SubagentToolCall]
     @Environment(\.theme) private var theme
+    @State private var isExpanded: Bool = false
 
     /// Number of hidden tools (all except last 2)
     private var hiddenCount: Int {
@@ -1080,17 +1081,36 @@ struct SubagentToolsList: View {
         Array(tools.suffix(2))
     }
 
+    /// Tools to display based on expansion state
+    private var visibleTools: [SubagentToolCall] {
+        isExpanded ? tools : recentTools
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            // Show count of older hidden tools at top
+            // Expandable header if there are hidden tools
             if hiddenCount > 0 {
-                Text("+\(hiddenCount) more tool uses")
-                    .font(.system(size: 10))
-                    .foregroundColor(theme.textDim)
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(theme.textDimmer)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+
+                        Text("\(isExpanded ? "Hide" : "Show") \(hiddenCount) more tool\(hiddenCount == 1 ? "" : "s")")
+                            .font(.system(size: 10))
+                            .foregroundColor(theme.textDim)
+                    }
+                }
+                .buttonStyle(.plain)
             }
 
-            // Show last 2 tools (most recent activity)
-            ForEach(recentTools) { tool in
+            // Tool list
+            ForEach(visibleTools) { tool in
                 SubagentToolRow(tool: tool)
             }
         }
