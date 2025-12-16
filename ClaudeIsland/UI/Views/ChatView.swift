@@ -1045,6 +1045,8 @@ struct ToolCallView: View {
             if let url = tool.input["url"] {
                 return url
             }
+        case "Task":
+            return tool.input["prompt"]
         default:
             break
         }
