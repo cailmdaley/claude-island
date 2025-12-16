@@ -256,7 +256,6 @@ struct NotchView: View {
                 // Resize handle for chat view
                 if case .chat = viewModel.contentType {
                     ResizeHandle(viewModel: viewModel)
-                        .frame(height: 20)
                 }
             }
         }
@@ -583,14 +582,14 @@ struct ResizeHandle: View {
             Spacer()
             Rectangle()
                 .fill(Color.white.opacity(isDragging ? 0.3 : 0.1))
-                .frame(width: 40, height: 4)
+                .frame(width: 60, height: 4)
                 .cornerRadius(2)
             Spacer()
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 30)
         .contentShape(Rectangle())
         .gesture(
-            DragGesture()
+            DragGesture(minimumDistance: 0)
                 .onChanged { value in
                     if !isDragging {
                         isDragging = true
@@ -602,6 +601,12 @@ struct ResizeHandle: View {
                 }
                 .onEnded { _ in
                     isDragging = false
+                }
+        )
+        .simultaneousGesture(
+            TapGesture()
+                .onEnded { _ in
+                    // Consume tap to prevent island close
                 }
         )
         .onHover { hovering in
