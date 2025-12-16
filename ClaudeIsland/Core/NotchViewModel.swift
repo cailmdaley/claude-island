@@ -77,10 +77,14 @@ class NotchViewModel: ObservableObject {
     var openedSize: CGSize {
         switch contentType {
         case .chat:
-            // Large size for chat view
+            // Terminal-width chat view (80 chars @ 7.5px/char = 600px)
+            let charWidth: CGFloat = 7.5  // Google Sans Mono size 13
+            let terminalColumns: CGFloat = 80
+            let calculatedWidth = terminalColumns * charWidth
+
             return CGSize(
-                width: min(screenRect.width * 0.5, 600),
-                height: 580
+                width: min(screenRect.width * 0.9, calculatedWidth),
+                height: AppSettings.chatViewHeight
             )
         case .menu:
             // Menu size - account for all rows (~40px each) plus dividers

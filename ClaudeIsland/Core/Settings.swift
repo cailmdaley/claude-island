@@ -38,6 +38,7 @@ enum AppSettings {
 
     private enum Keys {
         static let notificationSound = "notificationSound"
+        static let chatViewHeight = "chatViewHeight"
     }
 
     // MARK: - Notification Sound
@@ -53,6 +54,19 @@ enum AppSettings {
         }
         set {
             defaults.set(newValue.rawValue, forKey: Keys.notificationSound)
+        }
+    }
+
+    // MARK: - Chat View Height
+
+    /// User-customizable height for chat view (default 580)
+    static var chatViewHeight: CGFloat {
+        get {
+            let stored = defaults.double(forKey: Keys.chatViewHeight)
+            return stored > 0 ? CGFloat(stored) : 580
+        }
+        set {
+            defaults.set(Double(newValue), forKey: Keys.chatViewHeight)
         }
     }
 }

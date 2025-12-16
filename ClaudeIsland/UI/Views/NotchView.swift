@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import Combine
 import CoreGraphics
 import SwiftUI
 
@@ -251,6 +252,12 @@ struct NotchView: View {
                             removal: .opacity.animation(.easeOut(duration: 0.15))
                         )
                     )
+
+                // Resize handle for chat view
+                if case .chat = viewModel.contentType {
+                    ResizeHandle(viewModel: viewModel)
+                        .frame(height: 20)
+                }
             }
         }
     }
@@ -560,6 +567,49 @@ struct NotchView: View {
             return .handled
         default:
             return .ignored
+        }
+    }
+}
+
+// MARK: - Resize Handle
+
+struct ResizeHandle: View {
+    @ObservedObject var viewModel: NotchViewModel
+    @State private var isDragging = false
+    @State private var dragStart: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer()
+            Rectangle()
+                .fill(Color.white.opacity(isDragging ? 0.3 : 0.1))
+                .frame(width: 40, height: 4)
+                .cornerRadius(2)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    if !isDragging {
+                        isDragging = true
+                        dragStart = AppSettings.chatViewHeight
+                    }
+                    let newHeight = dragStart + value.translation.height
+                    AppSettings.chatViewHeight = max(300, min(1000, newHeight))
+                    viewModel.objectWillChange.send()  // Trigger view update
+                }
+                .onEnded { _ in
+                    isDragging = false
+                }
+        )
+        .onHover { hovering in
+            if hovering {
+                NSCursor.resizeUpDown.push()
+            } else {
+                NSCursor.pop()
+            }
         }
     }
 }
