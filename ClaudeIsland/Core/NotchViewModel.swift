@@ -95,6 +95,11 @@ class NotchViewModel: ObservableObject {
                 height: 520 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
             )
         case .instances:
+            // Terminal-width instances view (80 chars @ 7.5px/char = 600px)
+            let charWidth: CGFloat = 7.5
+            let terminalColumns: CGFloat = 80
+            let calculatedWidth = terminalColumns * charWidth
+
             // Dynamic height based on session count
             // Each row: ~60px (including padding), spacing: 2px between rows
             let baseHeight: CGFloat = 60
@@ -113,7 +118,7 @@ class NotchViewModel: ObservableObject {
             }
 
             return CGSize(
-                width: min(screenRect.width * 0.4, 480),
+                width: min(screenRect.width * 0.9, calculatedWidth),
                 height: min(max(calculatedHeight, minHeight), maxHeight)
             )
         }
