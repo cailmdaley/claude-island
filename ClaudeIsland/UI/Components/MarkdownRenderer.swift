@@ -220,7 +220,7 @@ private struct InlineRenderer: View {
                 .foregroundColor(baseColor)
         } else if let code = inline as? InlineCode {
             return SwiftUI.Text(code.code)
-                .font(.system(size: fontSize, design: .monospaced))
+                .font(.custom("Google Sans Mono", size: fontSize))
                 .foregroundColor(baseColor)
         } else if let link = inline as? Markdown.Link {
             let plainText = link.plainText
@@ -259,7 +259,7 @@ private struct CodeBlockView: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             SwiftUI.Text(code)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.custom("Google Sans Mono", size: 11))
                 .foregroundColor(theme.textSecondary)
                 .padding(10)
         }

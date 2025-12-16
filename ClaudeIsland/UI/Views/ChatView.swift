@@ -478,8 +478,8 @@ struct ChatView: View {
                     .scrollContentBackground(.hidden)
                     .focused($isInputFocused)
                     .disabled(!canSendMessages)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
                     .frame(minHeight: 36, maxHeight: 120)
                     .fixedSize(horizontal: false, vertical: true)
                     .onKeyPress(.return, phases: .down) { keyPress in
@@ -1083,10 +1083,10 @@ struct SubagentToolsSummary: View {
                 ForEach(toolCounts.prefix(5), id: \.0) { name, count in
                     HStack(spacing: 2) {
                         Text(name)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.custom("Google Sans Mono", size: 10))
                             .foregroundColor(theme.textDimmer)
                         Text("×\(count)")
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.custom("Google Sans Mono", size: 9))
                             .foregroundColor(theme.textDimmer.opacity(0.7))
                     }
                 }
@@ -1181,7 +1181,7 @@ struct ChatInteractivePromptBar: View {
             // Tool info - same style as approval bar
             VStack(alignment: .leading, spacing: 2) {
                 Text(MCPToolFormatter.formatToolName("AskUserQuestion"))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 12))
                     .foregroundColor(theme.warning)
                 Text("Claude Code needs your input")
                     .font(.system(size: 11))
@@ -1261,7 +1261,7 @@ struct ChatApprovalBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(MCPToolFormatter.formatToolName(tool))
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 12))
                         .foregroundColor(theme.warning)
                     if hasExpandableContent {
                         Image(systemName: "chevron.right")
@@ -1430,7 +1430,7 @@ struct ToolDetailOverlay: View {
                 // Header
                 HStack {
                     Text(MCPToolFormatter.formatToolName(toolName))
-                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 14))
                         .foregroundColor(theme.warning)
 
                     Spacer()

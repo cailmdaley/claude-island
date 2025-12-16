@@ -160,10 +160,10 @@ struct WriteResultContent: View {
             // Action and filename
             HStack(spacing: 4) {
                 Text(result.type == .create ? "Created" : "Wrote")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDim)
                 Text(result.filename)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textSecondary)
             }
 
@@ -191,7 +191,7 @@ struct BashResultContent: View {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 10))
                     Text("Background task: \(bgId)")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                 }
                 .foregroundColor(theme.terminalBlue)
             }
@@ -199,7 +199,7 @@ struct BashResultContent: View {
             // Return code interpretation
             if let interpretation = result.returnCodeInterpretation {
                 Text(interpretation)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDim)
             }
 
@@ -215,7 +215,7 @@ struct BashResultContent: View {
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(theme.error)
                     Text(result.stderr)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                         .foregroundColor(theme.error.opacity(0.9))
                         .lineLimit(10)
                 }
@@ -224,7 +224,7 @@ struct BashResultContent: View {
             // Empty state
             if !result.hasOutput && result.backgroundTaskId == nil && result.returnCodeInterpretation == nil {
                 Text("(No content)")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDimmer)
             }
         }
@@ -244,7 +244,7 @@ struct GrepResultContent: View {
                 // Show file list
                 if result.filenames.isEmpty {
                     Text("No matches found")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                         .foregroundColor(theme.textDimmer)
                 } else {
                     FileListView(files: result.filenames, limit: 10)
@@ -256,13 +256,13 @@ struct GrepResultContent: View {
                     CodePreview(content: content, maxLines: 15)
                 } else {
                     Text("No matches found")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                         .foregroundColor(theme.textDimmer)
                 }
 
             case .count:
                 Text("\(result.numFiles) files with matches")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDim)
             }
         }
@@ -279,7 +279,7 @@ struct GlobResultContent: View {
         VStack(alignment: .leading, spacing: 6) {
             if result.filenames.isEmpty {
                 Text("No files found")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDimmer)
             } else {
                 FileListView(files: result.filenames, limit: 10)
@@ -353,13 +353,13 @@ struct TaskResultContent: View {
 
                 if let duration = result.totalDurationMs {
                     Text("\(formatDuration(duration))")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(theme.textDim)
                 }
 
                 if let tools = result.totalToolUseCount {
                     Text("\(tools) tools")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(theme.textDim)
                 }
             }
@@ -404,11 +404,11 @@ struct WebFetchResultContent: View {
             // URL and status
             HStack(spacing: 6) {
                 Text("\(result.code)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(result.code < 400 ? theme.success : theme.error)
 
                 Text(truncateUrl(result.url))
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDim)
                     .lineLimit(1)
             }
@@ -441,7 +441,7 @@ struct WebSearchResultContent: View {
         VStack(alignment: .leading, spacing: 6) {
             if result.results.isEmpty {
                 Text("No results found")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDimmer)
             } else {
                 ForEach(Array(result.results.prefix(5).enumerated()), id: \.offset) { _, item in
@@ -512,12 +512,12 @@ struct BashOutputResultContent: View {
             // Status
             HStack(spacing: 6) {
                 Text("Status: \(result.status)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDim)
 
                 if let exitCode = result.exitCode {
                     Text("Exit: \(exitCode)")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(exitCode == 0 ? theme.success : theme.error)
                 }
             }
@@ -529,7 +529,7 @@ struct BashOutputResultContent: View {
 
             if !result.stderr.isEmpty {
                 Text(result.stderr)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.error)
                     .lineLimit(5)
             }
@@ -550,7 +550,7 @@ struct KillShellResultContent: View {
                 .foregroundColor(theme.error)
 
             Text(result.message.isEmpty ? "Shell \(result.shellId) terminated" : result.message)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.custom("Google Sans Mono", size: 11))
                 .foregroundColor(theme.textDim)
         }
     }
@@ -569,7 +569,7 @@ struct ExitPlanModeResultContent: View {
                     Image(systemName: "doc.text")
                         .font(.system(size: 10))
                     Text(URL(fileURLWithPath: path).lastPathComponent)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                 }
                 .foregroundColor(theme.textSecondary)
             }
@@ -597,7 +597,7 @@ struct MCPResultContent: View {
                 Image(systemName: "puzzlepiece")
                     .font(.system(size: 10))
                 Text("\(MCPToolFormatter.toTitleCase(result.serverName)) - \(MCPToolFormatter.toTitleCase(result.toolName))")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
             }
             .foregroundColor(theme.terminalMagenta)
 
@@ -605,10 +605,10 @@ struct MCPResultContent: View {
             ForEach(Array(result.rawResult.prefix(5)), id: \.key) { key, value in
                 HStack(alignment: .top, spacing: 4) {
                     Text("\(key):")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(theme.textDim)
                     Text("\(String(describing: value).prefix(100))")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(theme.textSecondary)
                         .lineLimit(2)
                 }
@@ -628,7 +628,7 @@ struct GenericResultContent: View {
             GenericTextContent(text: content)
         } else {
             Text("Completed")
-                .font(.system(size: 11, design: .monospaced))
+                .font(.custom("Google Sans Mono", size: 11))
                 .foregroundColor(theme.textDimmer)
         }
     }
@@ -640,7 +640,7 @@ struct GenericTextContent: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, design: .monospaced))
+            .font(.custom("Google Sans Mono", size: 11))
             .foregroundColor(theme.textDim)
             .lineLimit(15)
     }
@@ -681,7 +681,7 @@ struct FileCodeView: View {
                     .font(.system(size: 10))
                     .foregroundColor(theme.textDim)
                 Text(filename)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -693,7 +693,7 @@ struct FileCodeView: View {
             // Top overflow indicator
             if hasLinesBefore {
                 Text("...")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
@@ -715,7 +715,7 @@ struct FileCodeView: View {
             // Bottom overflow indicator
             if hasMoreAfter {
                 Text("... (\(lines.count - maxLines) more lines)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
@@ -736,14 +736,14 @@ struct FileCodeView: View {
             HStack(spacing: 0) {
                 // Line number
                 Text("\(lineNumber)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .frame(width: 28, alignment: .trailing)
                     .padding(.trailing, 8)
 
                 // Line content
                 Text(line.isEmpty ? " " : line)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textSecondary)
                     .lineLimit(1)
             }
@@ -769,13 +769,13 @@ struct CodePreview: View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(displayLines.enumerated()), id: \.offset) { _, line in
                 Text(line.isEmpty ? " " : line)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(theme.textDim)
             }
 
             if hasMore {
                 Text("... (\(lines.count - maxLines) more lines)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .padding(.top, 2)
             }
@@ -796,7 +796,7 @@ struct FileListView: View {
                         .font(.system(size: 9))
                         .foregroundColor(theme.textDimmer)
                     Text(URL(fileURLWithPath: file).lastPathComponent)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                         .foregroundColor(theme.textSecondary)
                         .lineLimit(1)
                 }
@@ -821,7 +821,7 @@ struct DiffView: View {
                 VStack(alignment: .leading, spacing: 1) {
                     // Hunk header
                     Text("@@ -\(patch.oldStart),\(patch.oldLines) +\(patch.newStart),\(patch.newLines) @@")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 10))
                         .foregroundColor(theme.terminalCyan)
 
                     // Lines
@@ -831,7 +831,7 @@ struct DiffView: View {
 
                     if patch.lines.count > 10 {
                         Text("... (\(patch.lines.count - 10) more lines)")
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(.custom("Google Sans Mono", size: 10))
                             .foregroundColor(theme.textDimmer)
                     }
                 }
@@ -861,7 +861,7 @@ struct DiffLineView: View {
 
     var body: some View {
         Text(line)
-            .font(.system(size: 11, design: .monospaced))
+            .font(.custom("Google Sans Mono", size: 11))
             .foregroundColor(lineType.textColor(for: theme))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 4)
@@ -995,7 +995,7 @@ struct SimpleDiffView: View {
                         .font(.system(size: 10))
                         .foregroundColor(theme.textDim)
                     Text(name)
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(.custom("Google Sans Mono", size: 11))
                         .foregroundColor(theme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1008,7 +1008,7 @@ struct SimpleDiffView: View {
             // Top overflow indicator
             if hasLinesBefore {
                 Text("...")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
@@ -1033,7 +1033,7 @@ struct SimpleDiffView: View {
             // Bottom overflow indicator
             if hasMoreChanges {
                 Text("...")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(theme.textDimmer)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 46)
@@ -1073,20 +1073,20 @@ struct SimpleDiffView: View {
             HStack(spacing: 0) {
                 // Line number
                 Text("\(lineNumber)")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 10))
                     .foregroundColor(type.textColor(for: theme).opacity(0.6))
                     .frame(width: 28, alignment: .trailing)
                     .padding(.trailing, 4)
 
                 // +/- indicator
                 Text(type == .added ? "+" : "-")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(type.textColor(for: theme))
                     .frame(width: 14)
 
                 // Line content
                 Text(line.isEmpty ? " " : line)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.custom("Google Sans Mono", size: 11))
                     .foregroundColor(type.textColor(for: theme))
                     .lineLimit(1)
             }

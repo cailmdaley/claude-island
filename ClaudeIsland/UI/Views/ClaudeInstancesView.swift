@@ -204,7 +204,7 @@ struct InstanceRow: View {
                     // Show tool name in amber, input below for more space
                     VStack(alignment: .leading, spacing: 2) {
                         Text(MCPToolFormatter.formatToolName(toolName))
-                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .font(.custom("Google Sans Mono", size: 11))
                             .foregroundColor(theme.terminalAmber.opacity(0.9))
                         if isInteractiveTool {
                             Text("Needs your input")
@@ -225,7 +225,7 @@ struct InstanceRow: View {
                         HStack(spacing: 4) {
                             if let toolName = session.lastToolName {
                                 Text(MCPToolFormatter.formatToolName(toolName))
-                                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                    .font(.custom("Google Sans Mono", size: 11))
                                     .foregroundColor(theme.textSecondary)
                             }
                             if let input = session.lastMessage {
@@ -303,9 +303,6 @@ struct InstanceRow: View {
                 }
             }
         }
-        .padding(.leading, 8)
-        .padding(.trailing, 14)
-        .padding(.vertical, 10)
         .contentShape(Rectangle())
         .onTapGesture {
             onChat()
@@ -319,6 +316,9 @@ struct InstanceRow: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(isSelected ? theme.accent.opacity(0.6) : Color.clear, lineWidth: 1.5)
         )
+        .padding(.leading, 8)
+        .padding(.trailing, 14)
+        .padding(.vertical, 10)
         .onHover { isHovered = $0 }
         .task {
             isYabaiAvailable = await WindowFinder.shared.isYabaiAvailable()
