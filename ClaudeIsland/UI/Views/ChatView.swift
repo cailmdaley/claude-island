@@ -40,6 +40,9 @@ struct ChatView: View {
 
         // Initialize from cache if available (prevents loading flicker on view recreation)
         let cachedHistory = ChatHistoryManager.shared.history(for: sessionId)
+
+        // Restore draft text if available
+        self._inputText = State(initialValue: DraftMessageManager.shared.getDraft(for: sessionId))
         let alreadyLoaded = !cachedHistory.isEmpty
         self._history = State(initialValue: cachedHistory)
         self._isLoading = State(initialValue: !alreadyLoaded)
@@ -521,6 +524,9 @@ struct ChatView: View {
                         }
                         return .ignored
                     }
+                    .onChange(of: inputText) { _, newValue in
+                        DraftMessageManager.shared.saveDraft(newValue, for: sessionId)
+                    }
             }
             .background(
                 RoundedRectangle(cornerRadius: 20)
@@ -666,6 +672,7 @@ struct ChatView: View {
         guard !text.isEmpty else { return }
 
         inputText = ""
+        DraftMessageManager.shared.clearDraft(for: sessionId)
 
         // Resume autoscroll when user sends a message
         resumeAutoscroll()
