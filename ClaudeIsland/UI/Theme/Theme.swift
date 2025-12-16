@@ -105,3 +105,37 @@ struct LightTheme: Theme {
     let terminalMagenta = Color(red: 0.56, green: 0.41, blue: 0.62)  // iris
     let terminalPrompt = Color(red: 0.71, green: 0.39, blue: 0.48)  // rose
 }
+
+/// Liquid glass theme - translucent with vibrant colors
+struct GlassTheme: Theme {
+    // Glass uses transparency - actual blur/material effects applied in views
+    let background = Color.black.opacity(0.3)  // Light tint
+    let backgroundElevated = Color.white.opacity(0.15)
+    let backgroundHover = Color.white.opacity(0.25)
+
+    // Bright, high-contrast text for visibility on glass
+    let textPrimary = Color.white
+    let textSecondary = Color.white.opacity(0.9)
+    let textDim = Color.white.opacity(0.6)
+    let textDimmer = Color.white.opacity(0.35)
+
+    // Vibrant accent colors with slight transparency
+    let accent = Color(red: 1.0, green: 0.6, blue: 0.4)  // Warm orange
+    let success = Color(red: 0.5, green: 1.0, blue: 0.6)  // Bright green
+    let warning = Color(red: 1.0, green: 0.85, blue: 0.3)  // Bright yellow
+    let error = Color(red: 1.0, green: 0.4, blue: 0.5)  // Bright red-pink
+
+    // Code with subtle tint
+    let codeBackground = Color.white.opacity(0.12)
+    let diffAdded = Color(red: 0.3, green: 0.6, blue: 0.3)
+    let diffRemoved = Color(red: 0.6, green: 0.3, blue: 0.3)
+
+    // Vibrant terminal colors
+    let terminalGreen = Color(red: 0.5, green: 1.0, blue: 0.6)
+    let terminalAmber = Color(red: 1.0, green: 0.85, blue: 0.3)
+    let terminalRed = Color(red: 1.0, green: 0.4, blue: 0.5)
+    let terminalCyan = Color(red: 0.4, green: 1.0, blue: 1.0)
+    let terminalBlue = Color(red: 0.5, green: 0.7, blue: 1.0)
+    let terminalMagenta = Color(red: 1.0, green: 0.5, blue: 1.0)
+    let terminalPrompt = Color(red: 1.0, green: 0.6, blue: 0.4)
+}

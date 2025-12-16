@@ -29,6 +29,11 @@ struct NotchView: View {
     private var notchBackground: Color {
         viewModel.status == .opened ? theme.background : .black
     }
+
+    private var isGlass: Bool {
+        themeManager.preference == .glass && viewModel.status == .opened
+    }
+
     @State private var previousPendingIds: Set<String> = []
     @State private var previousWaitingForInputIds: Set<String> = []
     @State private var waitingForInputTimestamps: [String: Date] = [:]  // sessionId -> when it entered waitingForInput
@@ -158,7 +163,8 @@ struct NotchView: View {
                             : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], viewModel.status == .opened ? 12 : 0)
-                    .background(notchBackground)
+                    .background(isGlass ? Color.clear : notchBackground)
+                    .glassEffect(isGlass ? .regular.tint(theme.accent.opacity(0.2)) : .identity)
                     .clipShape(currentNotchShape)
                     .overlay(alignment: .top) {
                         Rectangle()

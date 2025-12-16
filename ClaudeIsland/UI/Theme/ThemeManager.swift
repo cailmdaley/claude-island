@@ -13,12 +13,14 @@ enum ThemePreference: String, CaseIterable {
     case system
     case light
     case dark
+    case glass
 
     var displayName: String {
         switch self {
         case .system: return "System"
         case .light: return "Light"
         case .dark: return "Dark"
+        case .glass: return "Glass"
         }
     }
 }
@@ -66,6 +68,8 @@ class ThemeManager: ObservableObject {
             currentTheme = LightTheme()
         case .dark:
             currentTheme = DarkTheme()
+        case .glass:
+            currentTheme = GlassTheme()
         }
     }
 }
