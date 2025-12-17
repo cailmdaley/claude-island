@@ -110,8 +110,8 @@ struct LightTheme: Theme {
 struct GlassTheme: Theme {
     // Glass uses transparency - actual blur/material effects applied in views
     let background = Color.black.opacity(0.3)  // Light tint
-    let backgroundElevated = Color.white.opacity(0.15)
-    let backgroundHover = Color.white.opacity(0.25)
+    let backgroundElevated = Color.white.opacity(0.05)  // Very subtle
+    let backgroundHover = Color.white.opacity(0.08)  // Slightly more visible
 
     // Bright, high-contrast text for visibility on glass
     let textPrimary = Color.white
