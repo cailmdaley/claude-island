@@ -64,9 +64,23 @@ struct ChatView: View {
         session.activePermission?.toolUseId.isEmpty ?? false
     }
 
+    /// Sessions with chat history for tab navigation
+    private var chatSessions: [SessionState] {
+        sessionMonitor.instances.filter { !$0.chatItems.isEmpty }
+    }
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
+                // Tab bar (above header, only if multiple sessions)
+                if chatSessions.count > 1 {
+                    ChatTabBar(
+                        sessions: chatSessions,
+                        currentSessionId: sessionId,
+                        onSelect: { viewModel.showChatInstant(for: $0) }
+                    )
+                }
+
                 // Header
                 chatHeader
 
@@ -307,17 +321,6 @@ struct ChatView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(theme.backgroundElevated)
-        .overlay(alignment: .bottom) {
-            LinearGradient(
-                colors: [theme.background.opacity(0.7), theme.background.opacity(0)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 24)
-            .offset(y: 24) // Push below header
-            .allowsHitTesting(false)
-        }
         .zIndex(1) // Render above message list
     }
 
@@ -550,17 +553,6 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(theme.backgroundElevated)
-        .overlay(alignment: .top) {
-            LinearGradient(
-                colors: [theme.background.opacity(0), theme.background.opacity(0.7)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 24)
-            .offset(y: -24) // Push above input bar
-            .allowsHitTesting(false)
-        }
         .zIndex(1) // Render above message list
     }
 

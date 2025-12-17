@@ -5,7 +5,38 @@
 //  App settings manager using UserDefaults
 //
 
+import Carbon
 import Foundation
+
+/// Available hotkeys for opening/closing the island
+enum OpenHotkey: String, CaseIterable {
+    case ctrlSpace = "⌃Space"
+    case cmdSection = "⌘§"
+    case cmdBacktick = "⌘`"
+    case optionSpace = "⌥Space"
+
+    var displayName: String { rawValue }
+
+    /// Carbon key code
+    var keyCode: UInt32 {
+        switch self {
+        case .ctrlSpace: return 0x31       // Space key
+        case .cmdSection: return 0x0A      // § key
+        case .cmdBacktick: return 0x32     // ` key
+        case .optionSpace: return 0x31     // Space key
+        }
+    }
+
+    /// Carbon modifier flags
+    var modifiers: UInt32 {
+        switch self {
+        case .ctrlSpace: return UInt32(controlKey)
+        case .cmdSection: return UInt32(cmdKey)
+        case .cmdBacktick: return UInt32(cmdKey)
+        case .optionSpace: return UInt32(optionKey)
+        }
+    }
+}
 
 /// Available notification sounds
 enum NotificationSound: String, CaseIterable {
@@ -39,6 +70,7 @@ enum AppSettings {
     private enum Keys {
         static let notificationSound = "notificationSound"
         static let chatViewExpanded = "chatViewExpanded"
+        static let openHotkey = "openHotkey"
     }
 
     // MARK: - Notification Sound
@@ -66,6 +98,22 @@ enum AppSettings {
         }
         set {
             defaults.set(newValue, forKey: Keys.chatViewExpanded)
+        }
+    }
+
+    // MARK: - Open Hotkey
+
+    /// Global hotkey for opening/closing the island
+    static var openHotkey: OpenHotkey {
+        get {
+            guard let rawValue = defaults.string(forKey: Keys.openHotkey),
+                  let hotkey = OpenHotkey(rawValue: rawValue) else {
+                return .ctrlSpace // Default
+            }
+            return hotkey
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: Keys.openHotkey)
         }
     }
 }

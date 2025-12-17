@@ -276,9 +276,6 @@ class NotchViewModel: ObservableObject {
         openReason = reason
         status = .opened
 
-        // Clear keyboard selection on fresh open
-        clearSelection()
-
         // Don't restore chat on notification - show instances list instead
         if reason == .notification {
             currentChatSession = nil
@@ -328,6 +325,14 @@ class NotchViewModel: ObservableObject {
 
     /// Go back to instances list and clear saved chat state
     func exitChat() {
+        // Preserve selection on the session we just left
+        if case .chat(let session) = contentType {
+            // Find index of this session in cached sessions
+            if let index = cachedSessions.firstIndex(where: { $0.sessionId == session.sessionId }) {
+                selectedSessionIndex = index
+            }
+        }
+
         currentChatSession = nil
         contentType = .instances
     }
@@ -398,5 +403,52 @@ class NotchViewModel: ObservableObject {
     /// Clear selection (called on fresh open)
     func clearSelection() {
         selectedSessionIndex = nil
+    }
+
+    // MARK: - Chat Tab Navigation
+
+    /// Sessions with chat history for tab display
+    var chatSessions: [SessionState] {
+        cachedSessions.filter { !$0.chatItems.isEmpty }
+    }
+
+    /// Switch to next chat session (cmd+shift+])
+    func switchToNextChatSession(currentSessionId: String) {
+        let sessions = chatSessions
+        guard sessions.count > 1 else { return }
+
+        guard let currentIndex = sessions.firstIndex(where: { $0.sessionId == currentSessionId }) else {
+            if let first = sessions.first { showChatInstant(for: first) }
+            return
+        }
+
+        let nextIndex = (currentIndex + 1) % sessions.count
+        showChatInstant(for: sessions[nextIndex])
+    }
+
+    /// Switch to previous chat session (cmd+shift+[)
+    func switchToPreviousChatSession(currentSessionId: String) {
+        let sessions = chatSessions
+        guard sessions.count > 1 else { return }
+
+        guard let currentIndex = sessions.firstIndex(where: { $0.sessionId == currentSessionId }) else {
+            if let last = sessions.last { showChatInstant(for: last) }
+            return
+        }
+
+        let prevIndex = currentIndex == 0 ? sessions.count - 1 : currentIndex - 1
+        showChatInstant(for: sessions[prevIndex])
+    }
+
+    /// Switch to chat without animation (for tab navigation)
+    func showChatInstant(for session: SessionState) {
+        if case .chat(let current) = contentType, current.sessionId == session.sessionId {
+            return
+        }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            contentType = .chat(session)
+        }
     }
 }

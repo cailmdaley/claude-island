@@ -40,6 +40,7 @@ struct NotchView: View {
     @State private var isVisible: Bool = false
     @State private var isHovering: Bool = false
     @State private var isBouncing: Bool = false
+    @FocusState private var hasKeyboardFocus: Bool
 
     @Namespace private var activityNamespace
 
@@ -163,9 +164,17 @@ struct NotchView: View {
                             : cornerRadiusInsets.closed.bottom
                     )
                     .padding([.horizontal, .bottom], viewModel.status == .opened ? 12 : 0)
-                    .background(isGlass ? Color.clear : notchBackground)
-                    .glassEffect(isGlass ? .regular.tint(theme.accent.opacity(0.2)) : .identity)
+                    .background {
+                        if isGlass {
+                            // Layered glass: contrast base + glass effect
+                            Color(nsColor: .controlBackgroundColor)
+                                .opacity(0.65)
+                        } else {
+                            notchBackground
+                        }
+                    }
                     .clipShape(currentNotchShape)
+                    .glassEffect(isGlass ? .regular : .identity, in: currentNotchShape)
                     .overlay(alignment: .top) {
                         Rectangle()
                             .fill(notchBackground)
@@ -205,9 +214,16 @@ struct NotchView: View {
         .environment(\.theme, themeManager.currentTheme)
         .preferredColorScheme(themeManager.preference == .light ? .light : .dark)
         .focusable()
+        .focused($hasKeyboardFocus)
         .focusEffectDisabled()
         .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow, .return, .escape]) { keyPress in
             handleKeyPress(keyPress.key)
+        }
+        .onChange(of: viewModel.contentType) { _, newContentType in
+            // Return focus to NotchView when viewing instances list
+            if case .instances = newContentType {
+                hasKeyboardFocus = true
+            }
         }
         .onAppear {
             sessionMonitor.startMonitoring()
@@ -265,6 +281,12 @@ struct NotchView: View {
                                 AppSettings.chatViewExpanded.toggle()
                                 viewModel.objectWillChange.send()
                             }
+                        }
+                    }
+                    .background {
+                        // Hidden buttons for tab switching keyboard shortcuts
+                        if case .chat(let session) = viewModel.contentType {
+                            tabShortcutButtons(sessionId: session.sessionId)
                         }
                     }
 
@@ -394,10 +416,26 @@ struct NotchView: View {
                     sessionMonitor: sessionMonitor,
                     viewModel: viewModel
                 )
+                .id(session.sessionId) // Force recreation when switching sessions via tabs
+                .transition(.identity) // Instant switch, no animation
             }
         }
         .frame(width: notchSize.width - 24) // Fixed width to prevent text reflow
-        // Removed .id() - was causing view recreation and performance issues
+    }
+
+    // MARK: - Tab Shortcut Buttons
+
+    /// Hidden buttons for tab switching (cmd+shift+[ and cmd+shift+])
+    @ViewBuilder
+    private func tabShortcutButtons(sessionId: String) -> some View {
+        HStack(spacing: 0) {
+            Button("") { viewModel.switchToNextChatSession(currentSessionId: sessionId) }
+                .keyboardShortcut("[", modifiers: [.command, .shift])
+            Button("") { viewModel.switchToPreviousChatSession(currentSessionId: sessionId) }
+                .keyboardShortcut("]", modifiers: [.command, .shift])
+        }
+        .opacity(0)
+        .allowsHitTesting(false)
     }
 
     // MARK: - Event Handlers
@@ -562,7 +600,6 @@ struct NotchView: View {
     private func handleChatKeyPress(_ key: KeyEquivalent) -> KeyPress.Result {
         switch key {
         case .escape:
-            // Only Escape exits chat - let arrow keys work in text field
             viewModel.exitChat()
             return .handled
         default:
