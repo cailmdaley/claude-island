@@ -110,7 +110,7 @@ class NotchViewModel: ObservableObject {
             let baseHeight: CGFloat = 60
             let spacing: CGFloat = 2
             let minHeight: CGFloat = 150
-            let maxHeight: CGFloat = 500
+            let maxHeight: CGFloat = screenRect.height * 0.7  // 70% of screen height
 
             let calculatedHeight: CGFloat
             if sessionCount == 0 {

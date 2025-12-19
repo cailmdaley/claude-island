@@ -566,7 +566,9 @@ struct ChatView: View {
             onApproveAlways: { approveAlwaysPermission() },
             onDeny: { denyPermission() },
             hideAlways: isNotificationPrompt,
-            onShowDetails: { showingToolDetails = true }
+            isYesNo: isNotificationPrompt,
+            onShowDetails: { showingToolDetails = true },
+            session: session
         )
     }
 
@@ -1351,7 +1353,9 @@ struct ChatApprovalBar: View {
     let onApproveAlways: () -> Void
     let onDeny: () -> Void
     var hideAlways: Bool = false
+    var isYesNo: Bool = false
     var onShowDetails: (() -> Void)? = nil
+    let session: SessionState
     @Environment(\.theme) private var theme
 
     @State private var showContent = false
@@ -1364,6 +1368,17 @@ struct ChatApprovalBar: View {
     private var hasExpandableContent: Bool {
         guard let input = toolInput else { return false }
         return input.count > 50 || input.contains("\n")
+    }
+
+    /// Extract command for Bash tools
+    private var bashCommand: String? {
+        guard tool == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let command = input["command"]?.value as? String else {
+            return nil
+        }
+        return command
     }
 
     var body: some View {
@@ -1380,11 +1395,18 @@ struct ChatApprovalBar: View {
                             .foregroundColor(theme.textDim)
                     }
                 }
-                if let input = toolInput {
+
+                // Special handling for Bash tools - show command in monospace
+                if let command = bashCommand {
+                    Text(command)
+                        .font(.custom("Google Sans Mono", size: 11))
+                        .foregroundColor(theme.textSecondary)
+                        .lineLimit(3)
+                } else if let input = toolInput {
                     Text(input)
                         .font(.system(size: 11))
                         .foregroundColor(theme.textDim)
-                        .lineLimit(1)
+                        .lineLimit(3)
                 }
             }
             .padding(.vertical, 4)
@@ -1404,11 +1426,11 @@ struct ChatApprovalBar: View {
 
             Spacer()
 
-            // Deny button
+            // Deny/No button
             Button {
                 onDeny()
             } label: {
-                Text("Deny")
+                Text(isYesNo ? "No" : "Deny")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(theme.textSecondary)
                     .padding(.horizontal, 16)
@@ -1420,8 +1442,8 @@ struct ChatApprovalBar: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
-            // Always button (hidden for notification-based prompts)
-            if !hideAlways {
+            // Always button (hidden for notification-based prompts and yes/no)
+            if !hideAlways && !isYesNo {
                 Button {
                     onApproveAlways()
                 } label: {
@@ -1438,11 +1460,11 @@ struct ChatApprovalBar: View {
                 .scaleEffect(showAlwaysButton ? 1 : 0.8)
             }
 
-            // Allow button
+            // Allow/Yes button
             Button {
                 onApprove()
             } label: {
-                Text("Allow")
+                Text(isYesNo ? "Yes" : "Allow")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(theme.background)
                     .padding(.horizontal, 16)
@@ -1521,21 +1543,26 @@ struct ToolDetailOverlay: View {
     let content: String
     let onDismiss: () -> Void
     @Environment(\.theme) private var theme
+    @ObservedObject private var themeManager = ThemeManager.shared
 
-    /// Display content - extracts and formats the content for reading
+    private var isGlass: Bool { themeManager.preference == .glass }
+
+    /// Display content - wraps content in code block for proper monospace formatting
     private var displayContent: String {
-        // For Write tool, extract just the content value
-        if let contentRange = content.range(of: "content: ") {
-            return String(content[contentRange.upperBound...])
-        }
-        return content
+        "```\n\(content)\n```"
     }
 
     var body: some View {
         ZStack {
             // Dimmed background
-            theme.background.opacity(0.95)
-                .onTapGesture { onDismiss() }
+            if isGlass {
+                Color(nsColor: .controlBackgroundColor).opacity(0.65)
+                    .background(.ultraThinMaterial)
+                    .onTapGesture { onDismiss() }
+            } else {
+                theme.background.opacity(0.95)
+                    .onTapGesture { onDismiss() }
+            }
 
             VStack(alignment: .leading, spacing: 0) {
                 // Header
@@ -1560,7 +1587,15 @@ struct ToolDetailOverlay: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(theme.backgroundElevated)
+                .background(
+                    Group {
+                        if isGlass {
+                            Color(nsColor: .controlBackgroundColor).opacity(0.5)
+                        } else {
+                            theme.backgroundElevated
+                        }
+                    }
+                )
 
                 // Content
                 ScrollView {
@@ -1574,8 +1609,18 @@ struct ToolDetailOverlay: View {
                         .padding(16)
                 }
             }
-            .background(theme.background)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background(
+                Group {
+                    if isGlass {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(nsColor: .controlBackgroundColor).opacity(0.65))
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(theme.background)
+                    }
+                }
+            )
             .padding(12)
         }
     }

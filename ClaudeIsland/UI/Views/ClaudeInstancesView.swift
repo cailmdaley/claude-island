@@ -296,7 +296,8 @@ struct InstanceRow: View {
                     onApprove: onApprove,
                     onApproveAlways: onApproveAlways,
                     onReject: onReject,
-                    hideAlways: isNotificationPrompt
+                    hideAlways: isNotificationPrompt,
+                    isYesNo: isNotificationPrompt
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else {
@@ -371,6 +372,7 @@ struct InlineApprovalButtons: View {
     let onApproveAlways: () -> Void
     let onReject: () -> Void
     var hideAlways: Bool = false
+    var isYesNo: Bool = false
 
     @State private var showChatButton = false
     @State private var showDenyButton = false
@@ -380,18 +382,22 @@ struct InlineApprovalButtons: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            // Chat button
-            IconButton(icon: "bubble.left") {
-                onChat()
+            // Chat button (only for standard approvals, not yes/no)
+            if !isYesNo {
+                IconButton(icon: "bubble.left") {
+                    onChat()
+                }
+                .opacity(showChatButton ? 1 : 0)
+                .scaleEffect(showChatButton ? 1 : 0.8)
             }
-            .opacity(showChatButton ? 1 : 0)
-            .scaleEffect(showChatButton ? 1 : 0.8)
 
             Button {
                 onReject()
-                onChat()  // Open chat for user to provide alternative instructions
+                if !isYesNo {
+                    onChat()  // Open chat for user to provide alternative instructions
+                }
             } label: {
-                Text("Deny")
+                Text(isYesNo ? "No" : "Deny")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.textSecondary)
                     .padding(.horizontal, 10)
@@ -403,7 +409,7 @@ struct InlineApprovalButtons: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
-            if !hideAlways {
+            if !hideAlways && !isYesNo {
                 Button(action: onApproveAlways) {
                     Text("Always")
                         .font(.system(size: 11, weight: .medium))
@@ -421,7 +427,7 @@ struct InlineApprovalButtons: View {
             Button {
                 onApprove()
             } label: {
-                Text("Allow")
+                Text(isYesNo ? "Yes" : "Allow")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(theme.background)
                     .padding(.horizontal, 10)
