@@ -1393,6 +1393,62 @@ struct ChatApprovalBar: View {
         return desc
     }
 
+    /// Extract file path for Edit tools
+    private var editFilePath: String? {
+        guard tool == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let path = input["file_path"]?.value as? String else {
+            return nil
+        }
+        // Show just filename, not full path
+        return (path as NSString).lastPathComponent
+    }
+
+    /// Extract old string for Edit tools
+    private var editOldString: String? {
+        guard tool == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let old = input["old_string"]?.value as? String else {
+            return nil
+        }
+        return old
+    }
+
+    /// Extract new string for Edit tools
+    private var editNewString: String? {
+        guard tool == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let new = input["new_string"]?.value as? String else {
+            return nil
+        }
+        return new
+    }
+
+    /// Extract file path for Write tools
+    private var writeFilePath: String? {
+        guard tool == "Write",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let path = input["file_path"]?.value as? String else {
+            return nil
+        }
+        return (path as NSString).lastPathComponent
+    }
+
+    /// Extract content for Write tools
+    private var writeContent: String? {
+        guard tool == "Write",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let content = input["content"]?.value as? String else {
+            return nil
+        }
+        return content
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Top row: Tool name + buttons
@@ -1476,7 +1532,7 @@ struct ChatApprovalBar: View {
                 .scaleEffect(showAllowButton ? 1 : 0.8)
             }
 
-            // Bottom row: Description + command preview (full width)
+            // Bottom row: Tool-specific preview (full width)
             if tool == "Bash" {
                 VStack(alignment: .leading, spacing: 4) {
                     // Description first (regular font)
@@ -1492,6 +1548,58 @@ struct ChatApprovalBar: View {
                             .font(.custom("Google Sans Mono", size: 11))
                             .foregroundColor(theme.textDim)
                             .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(showContent ? 1 : 0)
+            } else if tool == "Edit" {
+                VStack(alignment: .leading, spacing: 4) {
+                    // File path
+                    if let path = editFilePath {
+                        Text(path)
+                            .font(.system(size: 11))
+                            .foregroundColor(theme.textSecondary)
+                    }
+                    // Diff preview
+                    HStack(spacing: 8) {
+                        if let old = editOldString {
+                            Text("−")
+                                .font(.custom("Google Sans Mono", size: 11))
+                                .foregroundColor(theme.error)
+                            + Text(old.prefix(40) + (old.count > 40 ? "..." : ""))
+                                .font(.custom("Google Sans Mono", size: 10))
+                                .foregroundColor(theme.error.opacity(0.8))
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        if let new = editNewString {
+                            Text("+")
+                                .font(.custom("Google Sans Mono", size: 11))
+                                .foregroundColor(theme.terminalGreen)
+                            + Text(new.prefix(40) + (new.count > 40 ? "..." : ""))
+                                .font(.custom("Google Sans Mono", size: 10))
+                                .foregroundColor(theme.terminalGreen.opacity(0.8))
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(showContent ? 1 : 0)
+            } else if tool == "Write" {
+                VStack(alignment: .leading, spacing: 4) {
+                    // File path
+                    if let path = writeFilePath {
+                        Text(path)
+                            .font(.system(size: 11))
+                            .foregroundColor(theme.textSecondary)
+                    }
+                    // Content preview
+                    if let content = writeContent {
+                        Text("+")
+                            .font(.custom("Google Sans Mono", size: 11))
+                            .foregroundColor(theme.terminalGreen)
+                        + Text(content.prefix(60) + (content.count > 60 ? "..." : ""))
+                            .font(.custom("Google Sans Mono", size: 10))
+                            .foregroundColor(theme.terminalGreen.opacity(0.8))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1598,6 +1706,61 @@ struct ToolDetailOverlay: View {
         return command
     }
 
+    /// Extract file path for Edit tools
+    private var editFilePath: String? {
+        guard toolName == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let path = input["file_path"]?.value as? String else {
+            return nil
+        }
+        return path
+    }
+
+    /// Extract old string for Edit tools
+    private var editOldString: String? {
+        guard toolName == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let old = input["old_string"]?.value as? String else {
+            return nil
+        }
+        return old
+    }
+
+    /// Extract new string for Edit tools
+    private var editNewString: String? {
+        guard toolName == "Edit",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let new = input["new_string"]?.value as? String else {
+            return nil
+        }
+        return new
+    }
+
+    /// Extract file path for Write tools
+    private var writeFilePath: String? {
+        guard toolName == "Write",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let path = input["file_path"]?.value as? String else {
+            return nil
+        }
+        return path
+    }
+
+    /// Extract content for Write tools
+    private var writeContent: String? {
+        guard toolName == "Write",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let content = input["content"]?.value as? String else {
+            return nil
+        }
+        return content
+    }
+
     var body: some View {
         ZStack {
             // Dimmed background
@@ -1665,8 +1828,75 @@ struct ToolDetailOverlay: View {
                                     .background(theme.backgroundElevated)
                                     .cornerRadius(8)
                             }
+                        } else if toolName == "Edit" {
+                            // File path
+                            if let path = editFilePath {
+                                Text(path)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(theme.textSecondary)
+                                    .textSelection(.enabled)
+                            }
+
+                            // Old string (deletion)
+                            if let old = editOldString {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("−  Remove")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(theme.error)
+                                    Text(old)
+                                        .font(.custom("Google Sans Mono", size: 12))
+                                        .foregroundColor(theme.error.opacity(0.9))
+                                        .textSelection(.enabled)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.error.opacity(0.1))
+                                        .cornerRadius(6)
+                                }
+                            }
+
+                            // New string (addition)
+                            if let new = editNewString {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("+  Add")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(theme.terminalGreen)
+                                    Text(new)
+                                        .font(.custom("Google Sans Mono", size: 12))
+                                        .foregroundColor(theme.terminalGreen.opacity(0.9))
+                                        .textSelection(.enabled)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.terminalGreen.opacity(0.1))
+                                        .cornerRadius(6)
+                                }
+                            }
+                        } else if toolName == "Write" {
+                            // File path
+                            if let path = writeFilePath {
+                                Text(path)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(theme.textSecondary)
+                                    .textSelection(.enabled)
+                            }
+
+                            // Content (addition)
+                            if let content = writeContent {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("+  Write")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(theme.terminalGreen)
+                                    Text(content)
+                                        .font(.custom("Google Sans Mono", size: 12))
+                                        .foregroundColor(theme.terminalGreen.opacity(0.9))
+                                        .textSelection(.enabled)
+                                        .padding(10)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(theme.terminalGreen.opacity(0.1))
+                                        .cornerRadius(6)
+                                }
+                            }
                         } else {
-                            // Non-Bash tools: show raw content
+                            // Other tools: show raw content
                             Text(content)
                                 .font(.system(size: 13))
                                 .foregroundColor(theme.textPrimary)
