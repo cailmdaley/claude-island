@@ -106,9 +106,10 @@ class NotchViewModel: ObservableObject {
             let calculatedWidth = terminalColumns * charWidth
 
             // Dynamic height based on session count
-            // Each row: ~60px (including padding), spacing: 2px between rows
-            let baseHeight: CGFloat = 60
+            // Each row: ~80px (content + padding + possible approval buttons), spacing: 2px
+            let rowHeight: CGFloat = 80
             let spacing: CGFloat = 2
+            let headerPadding: CGFloat = 20  // Top/bottom padding
             let minHeight: CGFloat = 150
             let maxHeight: CGFloat = screenRect.height * 0.7  // 70% of screen height
 
@@ -117,8 +118,8 @@ class NotchViewModel: ObservableObject {
                 // Empty state
                 calculatedHeight = minHeight
             } else {
-                // Height = (rows * baseHeight) + (gaps * spacing)
-                let contentHeight = CGFloat(sessionCount) * baseHeight + CGFloat(sessionCount - 1) * spacing
+                // Height = header padding + (rows * rowHeight) + (gaps * spacing)
+                let contentHeight = headerPadding + CGFloat(sessionCount) * rowHeight + CGFloat(sessionCount - 1) * spacing
                 calculatedHeight = contentHeight
             }
 

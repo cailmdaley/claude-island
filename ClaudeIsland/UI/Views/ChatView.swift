@@ -124,6 +124,7 @@ struct ChatView: View {
                 ToolDetailOverlay(
                     toolName: session.pendingToolName ?? "Tool",
                     content: toolInput,
+                    session: session,
                     onDismiss: { showingToolDetails = false }
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -1381,10 +1382,22 @@ struct ChatApprovalBar: View {
         return command
     }
 
+    /// Extract description for Bash tools
+    private var bashDescription: String? {
+        guard tool == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let desc = input["description"]?.value as? String else {
+            return nil
+        }
+        return desc
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            // Tool info (tappable to expand)
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 8) {
+            // Top row: Tool name + buttons
+            HStack(spacing: 12) {
+                // Tool name (tappable to expand)
                 HStack(spacing: 4) {
                     Text(MCPToolFormatter.formatToolName(tool))
                         .font(.custom("Google Sans Mono", size: 12))
@@ -1395,88 +1408,103 @@ struct ChatApprovalBar: View {
                             .foregroundColor(theme.textDim)
                     }
                 }
-
-                // Special handling for Bash tools - show command in monospace
-                if let command = bashCommand {
-                    Text(command)
-                        .font(.custom("Google Sans Mono", size: 11))
-                        .foregroundColor(theme.textSecondary)
-                        .lineLimit(3)
-                } else if let input = toolInput {
-                    Text(input)
-                        .font(.system(size: 11))
-                        .foregroundColor(theme.textDim)
-                        .lineLimit(3)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(isHoveringToolInfo && hasExpandableContent ? theme.backgroundHover : Color.clear)
+                )
+                .onHover { isHoveringToolInfo = $0 }
+                .onTapGesture {
+                    if hasExpandableContent {
+                        onShowDetails?()
+                    }
                 }
-            }
-            .padding(.vertical, 4)
-            .padding(.horizontal, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isHoveringToolInfo && hasExpandableContent ? theme.backgroundHover : Color.clear)
-            )
-            .onHover { isHoveringToolInfo = $0 }
-            .onTapGesture {
-                if hasExpandableContent {
-                    onShowDetails?()
-                }
-            }
-            .opacity(showContent ? 1 : 0)
-            .offset(x: showContent ? 0 : -10)
+                .opacity(showContent ? 1 : 0)
+                .offset(x: showContent ? 0 : -10)
 
-            Spacer()
+                Spacer()
 
-            // Deny/No button
-            Button {
-                onDeny()
-            } label: {
-                Text(isYesNo ? "No" : "Deny")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(theme.textSecondary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(theme.backgroundHover)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .opacity(showDenyButton ? 1 : 0)
-            .scaleEffect(showDenyButton ? 1 : 0.8)
-
-            // Always button (hidden for notification-based prompts and yes/no)
-            if !hideAlways && !isYesNo {
+                // Deny/No button
                 Button {
-                    onApproveAlways()
+                    onDeny()
                 } label: {
-                    Text("Always")
+                    Text(isYesNo ? "No" : "Deny")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(theme.textSecondary.opacity(0.9))
+                        .foregroundColor(theme.textSecondary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(theme.backgroundHover.opacity(1.2))
+                        .background(theme.backgroundHover)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .opacity(showAlwaysButton ? 1 : 0)
-                .scaleEffect(showAlwaysButton ? 1 : 0.8)
+                .opacity(showDenyButton ? 1 : 0)
+                .scaleEffect(showDenyButton ? 1 : 0.8)
+
+                // Always button (hidden for notification-based prompts and yes/no)
+                if !hideAlways && !isYesNo {
+                    Button {
+                        onApproveAlways()
+                    } label: {
+                        Text("Always")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(theme.textSecondary.opacity(0.9))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(theme.backgroundHover.opacity(1.2))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(showAlwaysButton ? 1 : 0)
+                    .scaleEffect(showAlwaysButton ? 1 : 0.8)
+                }
+
+                // Allow/Yes button
+                Button {
+                    onApprove()
+                } label: {
+                    Text(isYesNo ? "Yes" : "Allow")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(theme.background)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(theme.textPrimary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .opacity(showAllowButton ? 1 : 0)
+                .scaleEffect(showAllowButton ? 1 : 0.8)
             }
 
-            // Allow/Yes button
-            Button {
-                onApprove()
-            } label: {
-                Text(isYesNo ? "Yes" : "Allow")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(theme.background)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(theme.textPrimary)
-                    .clipShape(Capsule())
+            // Bottom row: Description + command preview (full width)
+            if tool == "Bash" {
+                VStack(alignment: .leading, spacing: 4) {
+                    // Description first (regular font)
+                    if let desc = bashDescription {
+                        Text(desc)
+                            .font(.system(size: 11))
+                            .foregroundColor(theme.textSecondary)
+                            .lineLimit(1)
+                    }
+                    // Command second (monospace)
+                    if let command = bashCommand {
+                        Text(command)
+                            .font(.custom("Google Sans Mono", size: 11))
+                            .foregroundColor(theme.textDim)
+                            .lineLimit(2)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(showContent ? 1 : 0)
+            } else if let input = toolInput {
+                Text(input)
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.textDim)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .opacity(showContent ? 1 : 0)
             }
-            .buttonStyle(.plain)
-            .opacity(showAllowButton ? 1 : 0)
-            .scaleEffect(showAllowButton ? 1 : 0.8)
         }
-        .frame(minHeight: 44)  // Consistent height with other bars
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(theme.backgroundElevated)
@@ -1541,15 +1569,33 @@ struct NewMessagesIndicator: View {
 struct ToolDetailOverlay: View {
     let toolName: String
     let content: String
+    let session: SessionState
     let onDismiss: () -> Void
     @Environment(\.theme) private var theme
     @ObservedObject private var themeManager = ThemeManager.shared
 
     private var isGlass: Bool { themeManager.preference == .glass }
 
-    /// Display content - wraps content in code block for proper monospace formatting
-    private var displayContent: String {
-        "```\n\(content)\n```"
+    /// Extract description for Bash tools
+    private var bashDescription: String? {
+        guard toolName == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let desc = input["description"]?.value as? String else {
+            return nil
+        }
+        return desc
+    }
+
+    /// Extract command for Bash tools
+    private var bashCommand: String? {
+        guard toolName == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let command = input["command"]?.value as? String else {
+            return nil
+        }
+        return command
     }
 
     var body: some View {
@@ -1599,14 +1645,36 @@ struct ToolDetailOverlay: View {
 
                 // Content
                 ScrollView {
-                    Markdown(displayContent)
-                        .markdownTextStyle {
-                            ForegroundColor(theme.textPrimary)
-                            FontSize(13)
+                    VStack(alignment: .leading, spacing: 12) {
+                        if toolName == "Bash" {
+                            // Description first (regular font)
+                            if let desc = bashDescription {
+                                Text(desc)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(theme.textSecondary)
+                                    .textSelection(.enabled)
+                            }
+                            // Command second (monospace)
+                            if let command = bashCommand {
+                                Text(command)
+                                    .font(.custom("Google Sans Mono", size: 13))
+                                    .foregroundColor(theme.textPrimary)
+                                    .textSelection(.enabled)
+                                    .padding(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(theme.backgroundElevated)
+                                    .cornerRadius(8)
+                            }
+                        } else {
+                            // Non-Bash tools: show raw content
+                            Text(content)
+                                .font(.system(size: 13))
+                                .foregroundColor(theme.textPrimary)
+                                .textSelection(.enabled)
                         }
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
                 }
             }
             .background(

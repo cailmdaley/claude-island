@@ -10,6 +10,7 @@ import Foundation
 
 /// Available hotkeys for opening/closing the island
 enum OpenHotkey: String, CaseIterable {
+    case cmdSlash = "⌘/"
     case ctrlSpace = "⌃Space"
     case cmdSection = "⌘§"
     case cmdBacktick = "⌘`"
@@ -20,6 +21,7 @@ enum OpenHotkey: String, CaseIterable {
     /// Carbon key code
     var keyCode: UInt32 {
         switch self {
+        case .cmdSlash: return 0x2C        // / key
         case .ctrlSpace: return 0x31       // Space key
         case .cmdSection: return 0x0A      // § key
         case .cmdBacktick: return 0x32     // ` key
@@ -30,6 +32,7 @@ enum OpenHotkey: String, CaseIterable {
     /// Carbon modifier flags
     var modifiers: UInt32 {
         switch self {
+        case .cmdSlash: return UInt32(cmdKey)
         case .ctrlSpace: return UInt32(controlKey)
         case .cmdSection: return UInt32(cmdKey)
         case .cmdBacktick: return UInt32(cmdKey)
@@ -108,7 +111,7 @@ enum AppSettings {
         get {
             guard let rawValue = defaults.string(forKey: Keys.openHotkey),
                   let hotkey = OpenHotkey(rawValue: rawValue) else {
-                return .ctrlSpace // Default
+                return .cmdSlash // Default
             }
             return hotkey
         }

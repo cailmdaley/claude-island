@@ -182,6 +182,28 @@ struct InstanceRow: View {
         session.activePermission?.toolUseId.isEmpty ?? false
     }
 
+    /// Extract description for Bash tools
+    private var bashDescription: String? {
+        guard session.pendingToolName == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let desc = input["description"]?.value as? String else {
+            return nil
+        }
+        return desc
+    }
+
+    /// Extract command for Bash tools
+    private var bashCommand: String? {
+        guard session.pendingToolName == "Bash",
+              let permission = session.activePermission,
+              let input = permission.toolInput,
+              let command = input["command"]?.value as? String else {
+            return nil
+        }
+        return command
+    }
+
     /// Background fill considering hover and selection states
     private var backgroundFill: Color {
         if isHovered {
@@ -217,6 +239,22 @@ struct InstanceRow: View {
                                 .font(.system(size: 11))
                                 .foregroundColor(theme.textSecondary)
                                 .lineLimit(1)
+                        } else if toolName == "Bash" {
+                            // Bash: description first, then command in mono
+                            VStack(alignment: .leading, spacing: 2) {
+                                if let desc = bashDescription {
+                                    Text(desc)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(theme.textSecondary)
+                                        .lineLimit(1)
+                                }
+                                if let command = bashCommand {
+                                    Text(command)
+                                        .font(.custom("Google Sans Mono", size: 10))
+                                        .foregroundColor(theme.textDim)
+                                        .lineLimit(1)
+                                }
+                            }
                         } else if let input = session.pendingToolInput {
                             Text(input)
                                 .font(.system(size: 11))
